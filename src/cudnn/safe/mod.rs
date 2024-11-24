@@ -98,7 +98,7 @@ mod tests {
             let algo = op.pick_algorithm()?;
             assert_eq!(
                 algo,
-                cudnn::sys::cudnnConvolutionFwdAlgo_t::CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM
+                cudnn::sys::cudnnConvolutionFwdAlgo_t::CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD
             );
         }
 
@@ -112,7 +112,7 @@ mod tests {
             let algo = op.pick_algorithm()?;
             assert_eq!(
                 algo,
-                cudnn::sys::cudnnConvolutionBwdDataAlgo_t::CUDNN_CONVOLUTION_BWD_DATA_ALGO_1
+                cudnn::sys::cudnnConvolutionBwdDataAlgo_t::CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING
             );
         }
 
