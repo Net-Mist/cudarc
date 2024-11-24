@@ -615,7 +615,7 @@ extern \"C\" __global__ void halfs(__half h) {
         let ptx = compile_ptx_with_opts(
             HALF_KERNELS,
             CompileOptions {
-                include_paths: std::vec!["/usr/include".into()],
+                include_paths: std::vec!["/usr/local/cuda/include".into()],
                 arch: Some("compute_53"),
                 ..Default::default()
             },
