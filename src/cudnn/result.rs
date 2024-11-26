@@ -77,12 +77,9 @@ pub fn version_check() -> Result<(), CudnnError> {
     }
     #[cfg(feature = "cuda-12040")]
     unsafe {
-        lib().cudnnAdvTrainVersionCheck().result()?;
-        lib().cudnnCnnTrainVersionCheck().result()?;
-        lib().cudnnOpsTrainVersionCheck().result()?;
-        lib().cudnnAdvInferVersionCheck().result()?;
-        lib().cudnnCnnInferVersionCheck().result()?;
-        lib().cudnnOpsInferVersionCheck().result()?;
+        lib().cudnnAdvVersionCheck().result()?;
+        lib().cudnnCnnVersionCheck().result()?;
+        lib().cudnnOpsVersionCheck().result()?;
     }
     Ok(())
 }
@@ -792,7 +789,7 @@ pub unsafe fn reduce_tensor(
 }
 
 /// Creates a backend descriptor. See [nvidia docs](https://docs.nvidia.com/deeplearning/cudnn/latest/api/cudnn-graph-library.html#cudnnbackendcreatedescriptor)
-pub fn create_backend_descriptor(
+pub fn backend_create_descriptor(
     desc_type: sys::cudnnBackendDescriptorType_t,
 ) -> Result<sys::cudnnBackendDescriptor_t, CudnnError> {
     let mut desc = MaybeUninit::uninit();
@@ -806,28 +803,53 @@ pub fn create_backend_descriptor(
 
 /// Wrapper for cudnnBackendSetAttribute.
 /// See [nvidia docs](https://docs.nvidia.com/deeplearning/cudnn/latest/api/cudnn-graph-library.html#cudnnbackendsetattribute)
-pub unsafe fn backend_set_attribute(
+pub fn backend_set_attribute(
     descriptor: sys::cudnnBackendDescriptor_t,
     attribute_name: sys::cudnnBackendAttributeName_t,
     attribute_type: sys::cudnnBackendAttributeType_t,
     element_count: i64,
     array_of_elements: *const ::core::ffi::c_void,
 ) -> Result<(), CudnnError> {
-    lib()
-        .cudnnBackendSetAttribute(
-            descriptor,
-            attribute_name,
-            attribute_type,
-            element_count,
-            array_of_elements,
-        )
-        .result()
+    unsafe {
+        lib()
+            .cudnnBackendSetAttribute(
+                descriptor,
+                attribute_name,
+                attribute_type,
+                element_count,
+                array_of_elements,
+            )
+    }.result()
+}
+
+pub fn backend_get_attribute(
+    descriptor: sys::cudnnBackendDescriptor_t,
+    attribute_name: sys::cudnnBackendAttributeName_t,
+    attribute_type: sys::cudnnBackendAttributeType_t,
+    requested_element_count: i64,
+    element_count: *mut i64,
+    array_of_elements: *mut std::ffi::c_void,
+) -> Result<(), CudnnError> {
+    unsafe {
+        lib()
+            .cudnnBackendGetAttribute(
+                descriptor,
+                attribute_name,
+                attribute_type,
+                requested_element_count,
+                element_count,
+                array_of_elements,
+            )
+            .result()
+    }
 }
 
 /// Wrapper for cudnnBackendFinalize.
 /// See [nvidia docs](https://docs.nvidia.com/deeplearning/cudnn/latest/api/cudnn-graph-library.html#cudnnbackendfinalize)
-pub unsafe fn backend_finalize(
+pub fn backend_finalize(
     descriptor: sys::cudnnBackendDescriptor_t,
 ) -> Result<(), CudnnError> {
-    lib().cudnnBackendFinalize(descriptor).result()
+    unsafe {
+        lib().cudnnBackendFinalize(descriptor)
+    }.result()
 }
