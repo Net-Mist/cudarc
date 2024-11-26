@@ -6,7 +6,13 @@ pub const CUDA_VERSION: u32 = 12040;
 pub struct CUstream_st {
     _unused: [u8; 0],
 }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct CUgraph_st {
+    _unused: [u8; 0],
+}
 pub type cudaStream_t = *mut CUstream_st;
+pub type cudaGraph_t = *mut CUgraph_st;
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub enum libraryPropertyType_t {
@@ -21,24 +27,76 @@ pub struct cudnnContext {
     _unused: [u8; 0],
 }
 pub type cudnnHandle_t = *mut cudnnContext;
+impl cudnnStatus_t {
+    pub const CUDNN_STATUS_ALLOC_FAILED: cudnnStatus_t =
+        cudnnStatus_t::CUDNN_STATUS_INTERNAL_ERROR_HOST_ALLOCATION_FAILED;
+}
+impl cudnnStatus_t {
+    pub const CUDNN_STATUS_ARCH_MISMATCH: cudnnStatus_t =
+        cudnnStatus_t::CUDNN_STATUS_NOT_SUPPORTED_ARCH_MISMATCH;
+}
+impl cudnnStatus_t {
+    pub const CUDNN_STATUS_MAPPING_ERROR: cudnnStatus_t =
+        cudnnStatus_t::CUDNN_STATUS_INTERNAL_ERROR_TEXTURE_CREATION_FAILED;
+}
+impl cudnnStatus_t {
+    pub const CUDNN_STATUS_RUNTIME_PREREQUISITE_MISSING: cudnnStatus_t =
+        cudnnStatus_t::CUDNN_STATUS_NOT_SUPPORTED_RUNTIME_PREREQUISITE_MISSING;
+}
+impl cudnnStatus_t {
+    pub const CUDNN_STATUS_VERSION_MISMATCH: cudnnStatus_t =
+        cudnnStatus_t::CUDNN_STATUS_SUBLIBRARY_VERSION_MISMATCH;
+}
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub enum cudnnStatus_t {
     CUDNN_STATUS_SUCCESS = 0,
-    CUDNN_STATUS_NOT_INITIALIZED = 1,
-    CUDNN_STATUS_ALLOC_FAILED = 2,
-    CUDNN_STATUS_BAD_PARAM = 3,
-    CUDNN_STATUS_INTERNAL_ERROR = 4,
-    CUDNN_STATUS_INVALID_VALUE = 5,
-    CUDNN_STATUS_ARCH_MISMATCH = 6,
-    CUDNN_STATUS_MAPPING_ERROR = 7,
-    CUDNN_STATUS_EXECUTION_FAILED = 8,
-    CUDNN_STATUS_NOT_SUPPORTED = 9,
-    CUDNN_STATUS_LICENSE_ERROR = 10,
-    CUDNN_STATUS_RUNTIME_PREREQUISITE_MISSING = 11,
-    CUDNN_STATUS_RUNTIME_IN_PROGRESS = 12,
-    CUDNN_STATUS_RUNTIME_FP_OVERFLOW = 13,
-    CUDNN_STATUS_VERSION_MISMATCH = 14,
+    CUDNN_STATUS_NOT_INITIALIZED = 1001,
+    CUDNN_STATUS_SUBLIBRARY_VERSION_MISMATCH = 1002,
+    CUDNN_STATUS_SERIALIZATION_VERSION_MISMATCH = 1003,
+    CUDNN_STATUS_DEPRECATED = 1004,
+    CUDNN_STATUS_LICENSE_ERROR = 1005,
+    CUDNN_STATUS_RUNTIME_IN_PROGRESS = 1006,
+    CUDNN_STATUS_RUNTIME_FP_OVERFLOW = 1007,
+    CUDNN_STATUS_SUBLIBRARY_LOADING_FAILED = 1008,
+    CUDNN_STATUS_BAD_PARAM = 2000,
+    CUDNN_STATUS_BAD_PARAM_NULL_POINTER = 2002,
+    CUDNN_STATUS_BAD_PARAM_MISALIGNED_POINTER = 2003,
+    CUDNN_STATUS_BAD_PARAM_NOT_FINALIZED = 2004,
+    CUDNN_STATUS_BAD_PARAM_OUT_OF_BOUND = 2005,
+    CUDNN_STATUS_BAD_PARAM_SIZE_INSUFFICIENT = 2006,
+    CUDNN_STATUS_BAD_PARAM_STREAM_MISMATCH = 2007,
+    CUDNN_STATUS_BAD_PARAM_SHAPE_MISMATCH = 2008,
+    CUDNN_STATUS_BAD_PARAM_DUPLICATED_ENTRIES = 2009,
+    CUDNN_STATUS_BAD_PARAM_ATTRIBUTE_TYPE = 2010,
+    CUDNN_STATUS_BAD_PARAM_CUDA_GRAPH_MISMATCH = 2011,
+    CUDNN_STATUS_NOT_SUPPORTED = 3000,
+    CUDNN_STATUS_NOT_SUPPORTED_GRAPH_PATTERN = 3001,
+    CUDNN_STATUS_NOT_SUPPORTED_SHAPE = 3002,
+    CUDNN_STATUS_NOT_SUPPORTED_DATA_TYPE = 3003,
+    CUDNN_STATUS_NOT_SUPPORTED_LAYOUT = 3004,
+    CUDNN_STATUS_NOT_SUPPORTED_INCOMPATIBLE_CUDA_DRIVER = 3005,
+    CUDNN_STATUS_NOT_SUPPORTED_INCOMPATIBLE_CUDART = 3006,
+    CUDNN_STATUS_NOT_SUPPORTED_ARCH_MISMATCH = 3007,
+    CUDNN_STATUS_NOT_SUPPORTED_RUNTIME_PREREQUISITE_MISSING = 3008,
+    CUDNN_STATUS_NOT_SUPPORTED_SUBLIBRARY_UNAVAILABLE = 3009,
+    CUDNN_STATUS_NOT_SUPPORTED_SHARED_MEMORY_INSUFFICIENT = 3010,
+    CUDNN_STATUS_NOT_SUPPORTED_PADDING = 3011,
+    CUDNN_STATUS_NOT_SUPPORTED_BAD_LAUNCH_PARAM = 3012,
+    CUDNN_STATUS_NOT_SUPPORTED_CUDA_GRAPH_NATIVE_API = 3013,
+    CUDNN_STATUS_INTERNAL_ERROR = 4000,
+    CUDNN_STATUS_INTERNAL_ERROR_COMPILATION_FAILED = 4001,
+    CUDNN_STATUS_INTERNAL_ERROR_UNEXPECTED_VALUE = 4002,
+    CUDNN_STATUS_INTERNAL_ERROR_HOST_ALLOCATION_FAILED = 4003,
+    CUDNN_STATUS_INTERNAL_ERROR_DEVICE_ALLOCATION_FAILED = 4004,
+    CUDNN_STATUS_INTERNAL_ERROR_BAD_LAUNCH_PARAM = 4005,
+    CUDNN_STATUS_INTERNAL_ERROR_TEXTURE_CREATION_FAILED = 4006,
+    CUDNN_STATUS_EXECUTION_FAILED = 5000,
+    CUDNN_STATUS_EXECUTION_FAILED_CUDA_DRIVER = 5001,
+    CUDNN_STATUS_EXECUTION_FAILED_CUBLAS = 5002,
+    CUDNN_STATUS_EXECUTION_FAILED_CUDART = 5003,
+    CUDNN_STATUS_EXECUTION_FAILED_CURAND = 5004,
+    CUDNN_STATUS_INVALID_VALUE = 2001,
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -52,66 +110,6 @@ pub enum cudnnErrQueryMode_t {
     CUDNN_ERRQUERY_NONBLOCKING = 1,
     CUDNN_ERRQUERY_BLOCKING = 2,
 }
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct cudnnTensorStruct {
-    _unused: [u8; 0],
-}
-pub type cudnnTensorDescriptor_t = *mut cudnnTensorStruct;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct cudnnPoolingStruct {
-    _unused: [u8; 0],
-}
-pub type cudnnPoolingDescriptor_t = *mut cudnnPoolingStruct;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct cudnnFilterStruct {
-    _unused: [u8; 0],
-}
-pub type cudnnFilterDescriptor_t = *mut cudnnFilterStruct;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct cudnnLRNStruct {
-    _unused: [u8; 0],
-}
-pub type cudnnLRNDescriptor_t = *mut cudnnLRNStruct;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct cudnnActivationStruct {
-    _unused: [u8; 0],
-}
-pub type cudnnActivationDescriptor_t = *mut cudnnActivationStruct;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct cudnnSpatialTransformerStruct {
-    _unused: [u8; 0],
-}
-pub type cudnnSpatialTransformerDescriptor_t = *mut cudnnSpatialTransformerStruct;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct cudnnOpTensorStruct {
-    _unused: [u8; 0],
-}
-pub type cudnnOpTensorDescriptor_t = *mut cudnnOpTensorStruct;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct cudnnReduceTensorStruct {
-    _unused: [u8; 0],
-}
-pub type cudnnReduceTensorDescriptor_t = *mut cudnnReduceTensorStruct;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct cudnnCTCLossStruct {
-    _unused: [u8; 0],
-}
-pub type cudnnCTCLossDescriptor_t = *mut cudnnCTCLossStruct;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct cudnnTensorTransformStruct {
-    _unused: [u8; 0],
-}
-pub type cudnnTensorTransformDescriptor_t = *mut cudnnTensorTransformStruct;
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub enum cudnnDataType_t {
@@ -126,6 +124,10 @@ pub enum cudnnDataType_t {
     CUDNN_DATA_INT8x32 = 8,
     CUDNN_DATA_BFLOAT16 = 9,
     CUDNN_DATA_INT64 = 10,
+    CUDNN_DATA_BOOLEAN = 11,
+    CUDNN_DATA_FP8_E4M3 = 12,
+    CUDNN_DATA_FP8_E5M2 = 13,
+    CUDNN_DATA_FAST_FLOAT_FOR_FP8 = 14,
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
@@ -143,9 +145,9 @@ pub enum cudnnNanPropagation_t {
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnDeterminism_t {
-    CUDNN_NON_DETERMINISTIC = 0,
-    CUDNN_DETERMINISTIC = 1,
+pub enum cudnnCTCGradMode_t {
+    CUDNN_CTC_ZERO_OOB_GRADIENTS = 0,
+    CUDNN_CTC_SKIP_OOB_GRADIENTS = 1,
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
@@ -153,22 +155,6 @@ pub enum cudnnTensorFormat_t {
     CUDNN_TENSOR_NCHW = 0,
     CUDNN_TENSOR_NHWC = 1,
     CUDNN_TENSOR_NCHW_VECT_C = 2,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnFoldingDirection_t {
-    CUDNN_TRANSFORM_FOLD = 0,
-    CUDNN_TRANSFORM_UNFOLD = 1,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnOpTensorOp_t {
-    CUDNN_OP_TENSOR_ADD = 0,
-    CUDNN_OP_TENSOR_MUL = 1,
-    CUDNN_OP_TENSOR_MIN = 2,
-    CUDNN_OP_TENSOR_MAX = 3,
-    CUDNN_OP_TENSOR_SQRT = 4,
-    CUDNN_OP_TENSOR_NOT = 5,
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
@@ -185,41 +171,6 @@ pub enum cudnnReduceTensorOp_t {
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnReduceTensorIndices_t {
-    CUDNN_REDUCE_TENSOR_NO_INDICES = 0,
-    CUDNN_REDUCE_TENSOR_FLATTENED_INDICES = 1,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnIndicesType_t {
-    CUDNN_32BIT_INDICES = 0,
-    CUDNN_64BIT_INDICES = 1,
-    CUDNN_16BIT_INDICES = 2,
-    CUDNN_8BIT_INDICES = 3,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnSoftmaxAlgorithm_t {
-    CUDNN_SOFTMAX_FAST = 0,
-    CUDNN_SOFTMAX_ACCURATE = 1,
-    CUDNN_SOFTMAX_LOG = 2,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnSoftmaxMode_t {
-    CUDNN_SOFTMAX_MODE_INSTANCE = 0,
-    CUDNN_SOFTMAX_MODE_CHANNEL = 1,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnPoolingMode_t {
-    CUDNN_POOLING_MAX = 0,
-    CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING = 1,
-    CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING = 2,
-    CUDNN_POOLING_MAX_DETERMINISTIC = 3,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub enum cudnnActivationMode_t {
     CUDNN_ACTIVATION_SIGMOID = 0,
     CUDNN_ACTIVATION_RELU = 1,
@@ -229,251 +180,6 @@ pub enum cudnnActivationMode_t {
     CUDNN_ACTIVATION_IDENTITY = 5,
     CUDNN_ACTIVATION_SWISH = 6,
 }
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnLRNMode_t {
-    CUDNN_LRN_CROSS_CHANNEL_DIM1 = 0,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnDivNormMode_t {
-    CUDNN_DIVNORM_PRECOMPUTED_MEANS = 0,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnBatchNormMode_t {
-    CUDNN_BATCHNORM_PER_ACTIVATION = 0,
-    CUDNN_BATCHNORM_SPATIAL = 1,
-    CUDNN_BATCHNORM_SPATIAL_PERSISTENT = 2,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnBatchNormOps_t {
-    CUDNN_BATCHNORM_OPS_BN = 0,
-    CUDNN_BATCHNORM_OPS_BN_ACTIVATION = 1,
-    CUDNN_BATCHNORM_OPS_BN_ADD_ACTIVATION = 2,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnNormMode_t {
-    CUDNN_NORM_PER_ACTIVATION = 0,
-    CUDNN_NORM_PER_CHANNEL = 1,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnNormAlgo_t {
-    CUDNN_NORM_ALGO_STANDARD = 0,
-    CUDNN_NORM_ALGO_PERSIST = 1,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnNormOps_t {
-    CUDNN_NORM_OPS_NORM = 0,
-    CUDNN_NORM_OPS_NORM_ACTIVATION = 1,
-    CUDNN_NORM_OPS_NORM_ADD_ACTIVATION = 2,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnSamplerType_t {
-    CUDNN_SAMPLER_BILINEAR = 0,
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct cudnnDropoutStruct {
-    _unused: [u8; 0],
-}
-pub type cudnnDropoutDescriptor_t = *mut cudnnDropoutStruct;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct cudnnAlgorithmStruct {
-    _unused: [u8; 0],
-}
-pub type cudnnAlgorithmDescriptor_t = *mut cudnnAlgorithmStruct;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct cudnnAlgorithmPerformanceStruct {
-    _unused: [u8; 0],
-}
-pub type cudnnAlgorithmPerformance_t = *mut cudnnAlgorithmPerformanceStruct;
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnConvolutionFwdAlgo_t {
-    CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM = 0,
-    CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM = 1,
-    CUDNN_CONVOLUTION_FWD_ALGO_GEMM = 2,
-    CUDNN_CONVOLUTION_FWD_ALGO_DIRECT = 3,
-    CUDNN_CONVOLUTION_FWD_ALGO_FFT = 4,
-    CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING = 5,
-    CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD = 6,
-    CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED = 7,
-    CUDNN_CONVOLUTION_FWD_ALGO_COUNT = 8,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnConvolutionBwdFilterAlgo_t {
-    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0 = 0,
-    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1 = 1,
-    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT = 2,
-    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3 = 3,
-    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD = 4,
-    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED = 5,
-    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING = 6,
-    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_COUNT = 7,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnConvolutionBwdDataAlgo_t {
-    CUDNN_CONVOLUTION_BWD_DATA_ALGO_0 = 0,
-    CUDNN_CONVOLUTION_BWD_DATA_ALGO_1 = 1,
-    CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT = 2,
-    CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING = 3,
-    CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD = 4,
-    CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED = 5,
-    CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT = 6,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnRNNAlgo_t {
-    CUDNN_RNN_ALGO_STANDARD = 0,
-    CUDNN_RNN_ALGO_PERSIST_STATIC = 1,
-    CUDNN_RNN_ALGO_PERSIST_DYNAMIC = 2,
-    CUDNN_RNN_ALGO_PERSIST_STATIC_SMALL_H = 3,
-    CUDNN_RNN_ALGO_COUNT = 4,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnCTCLossAlgo_t {
-    CUDNN_CTC_LOSS_ALGO_DETERMINISTIC = 0,
-    CUDNN_CTC_LOSS_ALGO_NON_DETERMINISTIC = 1,
-}
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct cudnnAlgorithmUnionStruct {
-    pub algo: cudnnAlgorithmUnionStruct_Algorithm,
-}
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub union cudnnAlgorithmUnionStruct_Algorithm {
-    pub convFwdAlgo: cudnnConvolutionFwdAlgo_t,
-    pub convBwdFilterAlgo: cudnnConvolutionBwdFilterAlgo_t,
-    pub convBwdDataAlgo: cudnnConvolutionBwdDataAlgo_t,
-    pub RNNAlgo: cudnnRNNAlgo_t,
-    pub CTCLossAlgo: cudnnCTCLossAlgo_t,
-}
-#[test]
-fn bindgen_test_layout_cudnnAlgorithmUnionStruct_Algorithm() {
-    const UNINIT: ::core::mem::MaybeUninit<cudnnAlgorithmUnionStruct_Algorithm> =
-        ::core::mem::MaybeUninit::uninit();
-    let ptr = UNINIT.as_ptr();
-    assert_eq!(
-        ::core::mem::size_of::<cudnnAlgorithmUnionStruct_Algorithm>(),
-        4usize,
-        concat!("Size of: ", stringify!(cudnnAlgorithmUnionStruct_Algorithm))
-    );
-    assert_eq!(
-        ::core::mem::align_of::<cudnnAlgorithmUnionStruct_Algorithm>(),
-        4usize,
-        concat!(
-            "Alignment of ",
-            stringify!(cudnnAlgorithmUnionStruct_Algorithm)
-        )
-    );
-    assert_eq!(
-        unsafe { ::core::ptr::addr_of!((*ptr).convFwdAlgo) as usize - ptr as usize },
-        0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(cudnnAlgorithmUnionStruct_Algorithm),
-            "::",
-            stringify!(convFwdAlgo)
-        )
-    );
-    assert_eq!(
-        unsafe { ::core::ptr::addr_of!((*ptr).convBwdFilterAlgo) as usize - ptr as usize },
-        0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(cudnnAlgorithmUnionStruct_Algorithm),
-            "::",
-            stringify!(convBwdFilterAlgo)
-        )
-    );
-    assert_eq!(
-        unsafe { ::core::ptr::addr_of!((*ptr).convBwdDataAlgo) as usize - ptr as usize },
-        0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(cudnnAlgorithmUnionStruct_Algorithm),
-            "::",
-            stringify!(convBwdDataAlgo)
-        )
-    );
-    assert_eq!(
-        unsafe { ::core::ptr::addr_of!((*ptr).RNNAlgo) as usize - ptr as usize },
-        0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(cudnnAlgorithmUnionStruct_Algorithm),
-            "::",
-            stringify!(RNNAlgo)
-        )
-    );
-    assert_eq!(
-        unsafe { ::core::ptr::addr_of!((*ptr).CTCLossAlgo) as usize - ptr as usize },
-        0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(cudnnAlgorithmUnionStruct_Algorithm),
-            "::",
-            stringify!(CTCLossAlgo)
-        )
-    );
-}
-impl Default for cudnnAlgorithmUnionStruct_Algorithm {
-    fn default() -> Self {
-        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
-        unsafe {
-            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
-            s.assume_init()
-        }
-    }
-}
-#[test]
-fn bindgen_test_layout_cudnnAlgorithmUnionStruct() {
-    const UNINIT: ::core::mem::MaybeUninit<cudnnAlgorithmUnionStruct> =
-        ::core::mem::MaybeUninit::uninit();
-    let ptr = UNINIT.as_ptr();
-    assert_eq!(
-        ::core::mem::size_of::<cudnnAlgorithmUnionStruct>(),
-        4usize,
-        concat!("Size of: ", stringify!(cudnnAlgorithmUnionStruct))
-    );
-    assert_eq!(
-        ::core::mem::align_of::<cudnnAlgorithmUnionStruct>(),
-        4usize,
-        concat!("Alignment of ", stringify!(cudnnAlgorithmUnionStruct))
-    );
-    assert_eq!(
-        unsafe { ::core::ptr::addr_of!((*ptr).algo) as usize - ptr as usize },
-        0usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(cudnnAlgorithmUnionStruct),
-            "::",
-            stringify!(algo)
-        )
-    );
-}
-impl Default for cudnnAlgorithmUnionStruct {
-    fn default() -> Self {
-        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
-        unsafe {
-            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
-            s.assume_init()
-        }
-    }
-}
-pub type cudnnAlgorithm_t = cudnnAlgorithmUnionStruct;
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub enum cudnnSeverity_t {
@@ -642,6 +348,789 @@ pub type cudnnCallback_t = ::core::option::Option<
 >;
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnConvolutionMode_t {
+    CUDNN_CONVOLUTION = 0,
+    CUDNN_CROSS_CORRELATION = 1,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnReorderType_t {
+    CUDNN_DEFAULT_REORDER = 0,
+    CUDNN_NO_REORDER = 1,
+}
+pub type cudnnBackendDescriptor_t = *mut ::core::ffi::c_void;
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub struct cudnnFractionStruct {
+    pub numerator: i64,
+    pub denominator: i64,
+}
+#[test]
+fn bindgen_test_layout_cudnnFractionStruct() {
+    const UNINIT: ::core::mem::MaybeUninit<cudnnFractionStruct> =
+        ::core::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::core::mem::size_of::<cudnnFractionStruct>(),
+        16usize,
+        concat!("Size of: ", stringify!(cudnnFractionStruct))
+    );
+    assert_eq!(
+        ::core::mem::align_of::<cudnnFractionStruct>(),
+        8usize,
+        concat!("Alignment of ", stringify!(cudnnFractionStruct))
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).numerator) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(cudnnFractionStruct),
+            "::",
+            stringify!(numerator)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).denominator) as usize - ptr as usize },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(cudnnFractionStruct),
+            "::",
+            stringify!(denominator)
+        )
+    );
+}
+pub type cudnnFraction_t = cudnnFractionStruct;
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnPointwiseMode_t {
+    CUDNN_POINTWISE_ADD = 0,
+    CUDNN_POINTWISE_ADD_SQUARE = 5,
+    CUDNN_POINTWISE_DIV = 6,
+    CUDNN_POINTWISE_MAX = 3,
+    CUDNN_POINTWISE_MIN = 2,
+    CUDNN_POINTWISE_MOD = 7,
+    CUDNN_POINTWISE_MUL = 1,
+    CUDNN_POINTWISE_POW = 8,
+    CUDNN_POINTWISE_SUB = 9,
+    CUDNN_POINTWISE_ABS = 10,
+    CUDNN_POINTWISE_CEIL = 11,
+    CUDNN_POINTWISE_COS = 12,
+    CUDNN_POINTWISE_EXP = 13,
+    CUDNN_POINTWISE_FLOOR = 14,
+    CUDNN_POINTWISE_LOG = 15,
+    CUDNN_POINTWISE_NEG = 16,
+    CUDNN_POINTWISE_RSQRT = 17,
+    CUDNN_POINTWISE_SIN = 18,
+    CUDNN_POINTWISE_SQRT = 4,
+    CUDNN_POINTWISE_TAN = 19,
+    CUDNN_POINTWISE_ERF = 20,
+    CUDNN_POINTWISE_IDENTITY = 21,
+    CUDNN_POINTWISE_RECIPROCAL = 22,
+    CUDNN_POINTWISE_ATAN2 = 23,
+    CUDNN_POINTWISE_RELU_FWD = 100,
+    CUDNN_POINTWISE_TANH_FWD = 101,
+    CUDNN_POINTWISE_SIGMOID_FWD = 102,
+    CUDNN_POINTWISE_ELU_FWD = 103,
+    CUDNN_POINTWISE_GELU_FWD = 104,
+    CUDNN_POINTWISE_SOFTPLUS_FWD = 105,
+    CUDNN_POINTWISE_SWISH_FWD = 106,
+    CUDNN_POINTWISE_GELU_APPROX_TANH_FWD = 107,
+    CUDNN_POINTWISE_RELU_BWD = 200,
+    CUDNN_POINTWISE_TANH_BWD = 201,
+    CUDNN_POINTWISE_SIGMOID_BWD = 202,
+    CUDNN_POINTWISE_ELU_BWD = 203,
+    CUDNN_POINTWISE_GELU_BWD = 204,
+    CUDNN_POINTWISE_SOFTPLUS_BWD = 205,
+    CUDNN_POINTWISE_SWISH_BWD = 206,
+    CUDNN_POINTWISE_GELU_APPROX_TANH_BWD = 207,
+    CUDNN_POINTWISE_CMP_EQ = 300,
+    CUDNN_POINTWISE_CMP_NEQ = 301,
+    CUDNN_POINTWISE_CMP_GT = 302,
+    CUDNN_POINTWISE_CMP_GE = 303,
+    CUDNN_POINTWISE_CMP_LT = 304,
+    CUDNN_POINTWISE_CMP_LE = 305,
+    CUDNN_POINTWISE_LOGICAL_AND = 400,
+    CUDNN_POINTWISE_LOGICAL_OR = 401,
+    CUDNN_POINTWISE_LOGICAL_NOT = 402,
+    CUDNN_POINTWISE_GEN_INDEX = 501,
+    CUDNN_POINTWISE_BINARY_SELECT = 601,
+}
+impl cudnnResampleMode_t {
+    pub const CUDNN_RESAMPLE_AVGPOOL_INCLUDE_PADDING: cudnnResampleMode_t =
+        cudnnResampleMode_t::CUDNN_RESAMPLE_AVGPOOL;
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnResampleMode_t {
+    CUDNN_RESAMPLE_NEAREST = 0,
+    CUDNN_RESAMPLE_BILINEAR = 1,
+    CUDNN_RESAMPLE_AVGPOOL = 2,
+    CUDNN_RESAMPLE_AVGPOOL_EXCLUDE_PADDING = 4,
+    CUDNN_RESAMPLE_MAXPOOL = 3,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnSignalMode_t {
+    CUDNN_SIGNAL_SET = 0,
+    CUDNN_SIGNAL_WAIT = 1,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnGenStatsMode_t {
+    CUDNN_GENSTATS_SUM_SQSUM = 0,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnBnFinalizeStatsMode_t {
+    CUDNN_BN_FINALIZE_STATISTICS_TRAINING = 0,
+    CUDNN_BN_FINALIZE_STATISTICS_INFERENCE = 1,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnRngDistribution_t {
+    CUDNN_RNG_DISTRIBUTION_BERNOULLI = 0,
+    CUDNN_RNG_DISTRIBUTION_UNIFORM = 1,
+    CUDNN_RNG_DISTRIBUTION_NORMAL = 2,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnBackendAttributeName_t {
+    CUDNN_ATTR_POINTWISE_MODE = 0,
+    CUDNN_ATTR_POINTWISE_MATH_PREC = 1,
+    CUDNN_ATTR_POINTWISE_NAN_PROPAGATION = 2,
+    CUDNN_ATTR_POINTWISE_RELU_LOWER_CLIP = 3,
+    CUDNN_ATTR_POINTWISE_RELU_UPPER_CLIP = 4,
+    CUDNN_ATTR_POINTWISE_RELU_LOWER_CLIP_SLOPE = 5,
+    CUDNN_ATTR_POINTWISE_ELU_ALPHA = 6,
+    CUDNN_ATTR_POINTWISE_SOFTPLUS_BETA = 7,
+    CUDNN_ATTR_POINTWISE_SWISH_BETA = 8,
+    CUDNN_ATTR_POINTWISE_AXIS = 9,
+    CUDNN_ATTR_CONVOLUTION_COMP_TYPE = 100,
+    CUDNN_ATTR_CONVOLUTION_CONV_MODE = 101,
+    CUDNN_ATTR_CONVOLUTION_DILATIONS = 102,
+    CUDNN_ATTR_CONVOLUTION_FILTER_STRIDES = 103,
+    CUDNN_ATTR_CONVOLUTION_POST_PADDINGS = 104,
+    CUDNN_ATTR_CONVOLUTION_PRE_PADDINGS = 105,
+    CUDNN_ATTR_CONVOLUTION_SPATIAL_DIMS = 106,
+    CUDNN_ATTR_ENGINEHEUR_MODE = 200,
+    CUDNN_ATTR_ENGINEHEUR_OPERATION_GRAPH = 201,
+    CUDNN_ATTR_ENGINEHEUR_RESULTS = 202,
+    CUDNN_ATTR_ENGINEHEUR_SM_COUNT_TARGET = 203,
+    CUDNN_ATTR_ENGINECFG_ENGINE = 300,
+    CUDNN_ATTR_ENGINECFG_INTERMEDIATE_INFO = 301,
+    CUDNN_ATTR_ENGINECFG_KNOB_CHOICES = 302,
+    CUDNN_ATTR_ENGINECFG_WORKSPACE_SIZE = 303,
+    CUDNN_ATTR_ENGINECFG_SHARED_MEMORY_USED = 304,
+    CUDNN_ATTR_EXECUTION_PLAN_HANDLE = 400,
+    CUDNN_ATTR_EXECUTION_PLAN_ENGINE_CONFIG = 401,
+    CUDNN_ATTR_EXECUTION_PLAN_WORKSPACE_SIZE = 402,
+    CUDNN_ATTR_EXECUTION_PLAN_COMPUTED_INTERMEDIATE_UIDS = 403,
+    CUDNN_ATTR_EXECUTION_PLAN_RUN_ONLY_INTERMEDIATE_UIDS = 404,
+    CUDNN_ATTR_EXECUTION_PLAN_JSON_REPRESENTATION = 405,
+    CUDNN_ATTR_EXECUTION_PLAN_KERNEL_CACHE = 406,
+    CUDNN_ATTR_INTERMEDIATE_INFO_UNIQUE_ID = 500,
+    CUDNN_ATTR_INTERMEDIATE_INFO_SIZE = 501,
+    CUDNN_ATTR_INTERMEDIATE_INFO_DEPENDENT_DATA_UIDS = 502,
+    CUDNN_ATTR_INTERMEDIATE_INFO_DEPENDENT_ATTRIBUTES = 503,
+    CUDNN_ATTR_KNOB_CHOICE_KNOB_TYPE = 600,
+    CUDNN_ATTR_KNOB_CHOICE_KNOB_VALUE = 601,
+    CUDNN_ATTR_OPERATION_CONVOLUTION_FORWARD_ALPHA = 700,
+    CUDNN_ATTR_OPERATION_CONVOLUTION_FORWARD_BETA = 701,
+    CUDNN_ATTR_OPERATION_CONVOLUTION_FORWARD_CONV_DESC = 702,
+    CUDNN_ATTR_OPERATION_CONVOLUTION_FORWARD_W = 703,
+    CUDNN_ATTR_OPERATION_CONVOLUTION_FORWARD_X = 704,
+    CUDNN_ATTR_OPERATION_CONVOLUTION_FORWARD_Y = 705,
+    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_DATA_ALPHA = 706,
+    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_DATA_BETA = 707,
+    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_DATA_CONV_DESC = 708,
+    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_DATA_W = 709,
+    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_DATA_DX = 710,
+    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_DATA_DY = 711,
+    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_FILTER_ALPHA = 712,
+    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_FILTER_BETA = 713,
+    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_FILTER_CONV_DESC = 714,
+    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_FILTER_DW = 715,
+    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_FILTER_X = 716,
+    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_FILTER_DY = 717,
+    CUDNN_ATTR_OPERATION_POINTWISE_PW_DESCRIPTOR = 750,
+    CUDNN_ATTR_OPERATION_POINTWISE_XDESC = 751,
+    CUDNN_ATTR_OPERATION_POINTWISE_BDESC = 752,
+    CUDNN_ATTR_OPERATION_POINTWISE_YDESC = 753,
+    CUDNN_ATTR_OPERATION_POINTWISE_ALPHA1 = 754,
+    CUDNN_ATTR_OPERATION_POINTWISE_ALPHA2 = 755,
+    CUDNN_ATTR_OPERATION_POINTWISE_DXDESC = 756,
+    CUDNN_ATTR_OPERATION_POINTWISE_DYDESC = 757,
+    CUDNN_ATTR_OPERATION_POINTWISE_TDESC = 758,
+    CUDNN_ATTR_OPERATION_GENSTATS_MODE = 770,
+    CUDNN_ATTR_OPERATION_GENSTATS_MATH_PREC = 771,
+    CUDNN_ATTR_OPERATION_GENSTATS_XDESC = 772,
+    CUDNN_ATTR_OPERATION_GENSTATS_SUMDESC = 773,
+    CUDNN_ATTR_OPERATION_GENSTATS_SQSUMDESC = 774,
+    CUDNN_ATTR_OPERATION_BN_FINALIZE_STATS_MODE = 780,
+    CUDNN_ATTR_OPERATION_BN_FINALIZE_MATH_PREC = 781,
+    CUDNN_ATTR_OPERATION_BN_FINALIZE_Y_SUM_DESC = 782,
+    CUDNN_ATTR_OPERATION_BN_FINALIZE_Y_SQ_SUM_DESC = 783,
+    CUDNN_ATTR_OPERATION_BN_FINALIZE_SCALE_DESC = 784,
+    CUDNN_ATTR_OPERATION_BN_FINALIZE_BIAS_DESC = 785,
+    CUDNN_ATTR_OPERATION_BN_FINALIZE_PREV_RUNNING_MEAN_DESC = 786,
+    CUDNN_ATTR_OPERATION_BN_FINALIZE_PREV_RUNNING_VAR_DESC = 787,
+    CUDNN_ATTR_OPERATION_BN_FINALIZE_UPDATED_RUNNING_MEAN_DESC = 788,
+    CUDNN_ATTR_OPERATION_BN_FINALIZE_UPDATED_RUNNING_VAR_DESC = 789,
+    CUDNN_ATTR_OPERATION_BN_FINALIZE_SAVED_MEAN_DESC = 790,
+    CUDNN_ATTR_OPERATION_BN_FINALIZE_SAVED_INV_STD_DESC = 791,
+    CUDNN_ATTR_OPERATION_BN_FINALIZE_EQ_SCALE_DESC = 792,
+    CUDNN_ATTR_OPERATION_BN_FINALIZE_EQ_BIAS_DESC = 793,
+    CUDNN_ATTR_OPERATION_BN_FINALIZE_ACCUM_COUNT_DESC = 794,
+    CUDNN_ATTR_OPERATION_BN_FINALIZE_EPSILON_DESC = 795,
+    CUDNN_ATTR_OPERATION_BN_FINALIZE_EXP_AVERATE_FACTOR_DESC = 796,
+    CUDNN_ATTR_OPERATIONGRAPH_HANDLE = 800,
+    CUDNN_ATTR_OPERATIONGRAPH_OPS = 801,
+    CUDNN_ATTR_OPERATIONGRAPH_ENGINE_GLOBAL_COUNT = 802,
+    CUDNN_ATTR_OPERATIONGRAPH_IS_DYNAMIC_SHAPE_ENABLED = 803,
+    CUDNN_ATTR_TENSOR_BYTE_ALIGNMENT = 900,
+    CUDNN_ATTR_TENSOR_DATA_TYPE = 901,
+    CUDNN_ATTR_TENSOR_DIMENSIONS = 902,
+    CUDNN_ATTR_TENSOR_STRIDES = 903,
+    CUDNN_ATTR_TENSOR_VECTOR_COUNT = 904,
+    CUDNN_ATTR_TENSOR_VECTORIZED_DIMENSION = 905,
+    CUDNN_ATTR_TENSOR_UNIQUE_ID = 906,
+    CUDNN_ATTR_TENSOR_IS_VIRTUAL = 907,
+    CUDNN_ATTR_TENSOR_IS_BY_VALUE = 908,
+    CUDNN_ATTR_TENSOR_REORDERING_MODE = 909,
+    CUDNN_ATTR_TENSOR_RAGGED_OFFSET_DESC = 913,
+    CUDNN_ATTR_VARIANT_PACK_UNIQUE_IDS = 1000,
+    CUDNN_ATTR_VARIANT_PACK_DATA_POINTERS = 1001,
+    CUDNN_ATTR_VARIANT_PACK_INTERMEDIATES = 1002,
+    CUDNN_ATTR_VARIANT_PACK_WORKSPACE = 1003,
+    CUDNN_ATTR_LAYOUT_INFO_TENSOR_UID = 1100,
+    CUDNN_ATTR_LAYOUT_INFO_TYPES = 1101,
+    CUDNN_ATTR_KNOB_INFO_TYPE = 1200,
+    CUDNN_ATTR_KNOB_INFO_MAXIMUM_VALUE = 1201,
+    CUDNN_ATTR_KNOB_INFO_MINIMUM_VALUE = 1202,
+    CUDNN_ATTR_KNOB_INFO_STRIDE = 1203,
+    CUDNN_ATTR_ENGINE_OPERATION_GRAPH = 1300,
+    CUDNN_ATTR_ENGINE_GLOBAL_INDEX = 1301,
+    CUDNN_ATTR_ENGINE_KNOB_INFO = 1302,
+    CUDNN_ATTR_ENGINE_NUMERICAL_NOTE = 1303,
+    CUDNN_ATTR_ENGINE_LAYOUT_INFO = 1304,
+    CUDNN_ATTR_ENGINE_BEHAVIOR_NOTE = 1305,
+    CUDNN_ATTR_ENGINE_SM_COUNT_TARGET = 1306,
+    CUDNN_ATTR_MATMUL_COMP_TYPE = 1500,
+    CUDNN_ATTR_MATMUL_PADDING_VALUE = 1503,
+    CUDNN_ATTR_OPERATION_MATMUL_ADESC = 1520,
+    CUDNN_ATTR_OPERATION_MATMUL_BDESC = 1521,
+    CUDNN_ATTR_OPERATION_MATMUL_CDESC = 1522,
+    CUDNN_ATTR_OPERATION_MATMUL_DESC = 1523,
+    CUDNN_ATTR_OPERATION_MATMUL_IRREGULARLY_STRIDED_BATCH_COUNT = 1524,
+    CUDNN_ATTR_OPERATION_MATMUL_GEMM_M_OVERRIDE_DESC = 1525,
+    CUDNN_ATTR_OPERATION_MATMUL_GEMM_N_OVERRIDE_DESC = 1526,
+    CUDNN_ATTR_OPERATION_MATMUL_GEMM_K_OVERRIDE_DESC = 1527,
+    CUDNN_ATTR_REDUCTION_OPERATOR = 1600,
+    CUDNN_ATTR_REDUCTION_COMP_TYPE = 1601,
+    CUDNN_ATTR_OPERATION_REDUCTION_XDESC = 1610,
+    CUDNN_ATTR_OPERATION_REDUCTION_YDESC = 1611,
+    CUDNN_ATTR_OPERATION_REDUCTION_DESC = 1612,
+    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_MATH_PREC = 1620,
+    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_MEAN_DESC = 1621,
+    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_INVSTD_DESC = 1622,
+    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_BN_SCALE_DESC = 1623,
+    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_X_DESC = 1624,
+    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_DY_DESC = 1625,
+    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_DBN_SCALE_DESC = 1626,
+    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_DBN_BIAS_DESC = 1627,
+    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_EQ_DY_SCALE_DESC = 1628,
+    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_EQ_X_SCALE_DESC = 1629,
+    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_EQ_BIAS = 1630,
+    CUDNN_ATTR_RESAMPLE_MODE = 1700,
+    CUDNN_ATTR_RESAMPLE_COMP_TYPE = 1701,
+    CUDNN_ATTR_RESAMPLE_SPATIAL_DIMS = 1702,
+    CUDNN_ATTR_RESAMPLE_POST_PADDINGS = 1703,
+    CUDNN_ATTR_RESAMPLE_PRE_PADDINGS = 1704,
+    CUDNN_ATTR_RESAMPLE_STRIDES = 1705,
+    CUDNN_ATTR_RESAMPLE_WINDOW_DIMS = 1706,
+    CUDNN_ATTR_RESAMPLE_NAN_PROPAGATION = 1707,
+    CUDNN_ATTR_RESAMPLE_PADDING_MODE = 1708,
+    CUDNN_ATTR_OPERATION_RESAMPLE_FWD_XDESC = 1710,
+    CUDNN_ATTR_OPERATION_RESAMPLE_FWD_YDESC = 1711,
+    CUDNN_ATTR_OPERATION_RESAMPLE_FWD_IDXDESC = 1712,
+    CUDNN_ATTR_OPERATION_RESAMPLE_FWD_ALPHA = 1713,
+    CUDNN_ATTR_OPERATION_RESAMPLE_FWD_BETA = 1714,
+    CUDNN_ATTR_OPERATION_RESAMPLE_FWD_DESC = 1716,
+    CUDNN_ATTR_OPERATION_RESAMPLE_BWD_DXDESC = 1720,
+    CUDNN_ATTR_OPERATION_RESAMPLE_BWD_DYDESC = 1721,
+    CUDNN_ATTR_OPERATION_RESAMPLE_BWD_IDXDESC = 1722,
+    CUDNN_ATTR_OPERATION_RESAMPLE_BWD_ALPHA = 1723,
+    CUDNN_ATTR_OPERATION_RESAMPLE_BWD_BETA = 1724,
+    CUDNN_ATTR_OPERATION_RESAMPLE_BWD_DESC = 1725,
+    CUDNN_ATTR_OPERATION_RESAMPLE_BWD_XDESC = 1726,
+    CUDNN_ATTR_OPERATION_RESAMPLE_BWD_YDESC = 1727,
+    CUDNN_ATTR_OPERATION_CONCAT_AXIS = 1800,
+    CUDNN_ATTR_OPERATION_CONCAT_INPUT_DESCS = 1801,
+    CUDNN_ATTR_OPERATION_CONCAT_INPLACE_INDEX = 1802,
+    CUDNN_ATTR_OPERATION_CONCAT_OUTPUT_DESC = 1803,
+    CUDNN_ATTR_OPERATION_SIGNAL_MODE = 1900,
+    CUDNN_ATTR_OPERATION_SIGNAL_FLAGDESC = 1901,
+    CUDNN_ATTR_OPERATION_SIGNAL_VALUE = 1902,
+    CUDNN_ATTR_OPERATION_SIGNAL_XDESC = 1903,
+    CUDNN_ATTR_OPERATION_SIGNAL_YDESC = 1904,
+    CUDNN_ATTR_OPERATION_PAGED_CACHE_LOAD_CONTAINER_DESC = 1950,
+    CUDNN_ATTR_OPERATION_PAGED_CACHE_LOAD_YDESC = 1951,
+    CUDNN_ATTR_OPERATION_PAGED_CACHE_LOAD_SEQUENCE_DESC = 1952,
+    CUDNN_ATTR_OPERATION_PAGED_CACHE_LOAD_PAGE_TABLE_DESC = 1953,
+    CUDNN_ATTR_OPERATION_NORM_FWD_MODE = 2000,
+    CUDNN_ATTR_OPERATION_NORM_FWD_PHASE = 2001,
+    CUDNN_ATTR_OPERATION_NORM_FWD_XDESC = 2002,
+    CUDNN_ATTR_OPERATION_NORM_FWD_MEAN_DESC = 2003,
+    CUDNN_ATTR_OPERATION_NORM_FWD_INV_VARIANCE_DESC = 2004,
+    CUDNN_ATTR_OPERATION_NORM_FWD_SCALE_DESC = 2005,
+    CUDNN_ATTR_OPERATION_NORM_FWD_BIAS_DESC = 2006,
+    CUDNN_ATTR_OPERATION_NORM_FWD_EPSILON_DESC = 2007,
+    CUDNN_ATTR_OPERATION_NORM_FWD_EXP_AVG_FACTOR_DESC = 2008,
+    CUDNN_ATTR_OPERATION_NORM_FWD_INPUT_RUNNING_MEAN_DESC = 2009,
+    CUDNN_ATTR_OPERATION_NORM_FWD_INPUT_RUNNING_VAR_DESC = 2010,
+    CUDNN_ATTR_OPERATION_NORM_FWD_OUTPUT_RUNNING_MEAN_DESC = 2011,
+    CUDNN_ATTR_OPERATION_NORM_FWD_OUTPUT_RUNNING_VAR_DESC = 2012,
+    CUDNN_ATTR_OPERATION_NORM_FWD_YDESC = 2013,
+    CUDNN_ATTR_OPERATION_NORM_FWD_PEER_STAT_DESCS = 2014,
+    CUDNN_ATTR_OPERATION_NORM_BWD_MODE = 2100,
+    CUDNN_ATTR_OPERATION_NORM_BWD_XDESC = 2101,
+    CUDNN_ATTR_OPERATION_NORM_BWD_MEAN_DESC = 2102,
+    CUDNN_ATTR_OPERATION_NORM_BWD_INV_VARIANCE_DESC = 2103,
+    CUDNN_ATTR_OPERATION_NORM_BWD_DYDESC = 2104,
+    CUDNN_ATTR_OPERATION_NORM_BWD_SCALE_DESC = 2105,
+    CUDNN_ATTR_OPERATION_NORM_BWD_EPSILON_DESC = 2106,
+    CUDNN_ATTR_OPERATION_NORM_BWD_DSCALE_DESC = 2107,
+    CUDNN_ATTR_OPERATION_NORM_BWD_DBIAS_DESC = 2108,
+    CUDNN_ATTR_OPERATION_NORM_BWD_DXDESC = 2109,
+    CUDNN_ATTR_OPERATION_NORM_BWD_PEER_STAT_DESCS = 2110,
+    CUDNN_ATTR_OPERATION_RESHAPE_XDESC = 2200,
+    CUDNN_ATTR_OPERATION_RESHAPE_YDESC = 2201,
+    CUDNN_ATTR_RNG_DISTRIBUTION = 2300,
+    CUDNN_ATTR_RNG_NORMAL_DIST_MEAN = 2301,
+    CUDNN_ATTR_RNG_NORMAL_DIST_STANDARD_DEVIATION = 2302,
+    CUDNN_ATTR_RNG_UNIFORM_DIST_MAXIMUM = 2303,
+    CUDNN_ATTR_RNG_UNIFORM_DIST_MINIMUM = 2304,
+    CUDNN_ATTR_RNG_BERNOULLI_DIST_PROBABILITY = 2305,
+    CUDNN_ATTR_OPERATION_RNG_YDESC = 2310,
+    CUDNN_ATTR_OPERATION_RNG_SEED = 2311,
+    CUDNN_ATTR_OPERATION_RNG_DESC = 2312,
+    CUDNN_ATTR_OPERATION_RNG_OFFSET_DESC = 2313,
+    CUDNN_ATTR_KERNEL_CACHE_OPERATION_GRAPH = 2400,
+    CUDNN_ATTR_KERNEL_CACHE_IS_ENGINECFG_KERNEL_CACHED = 2401,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnBackendAttributeType_t {
+    CUDNN_TYPE_HANDLE = 0,
+    CUDNN_TYPE_DATA_TYPE = 1,
+    CUDNN_TYPE_BOOLEAN = 2,
+    CUDNN_TYPE_INT64 = 3,
+    CUDNN_TYPE_FLOAT = 4,
+    CUDNN_TYPE_DOUBLE = 5,
+    CUDNN_TYPE_VOID_PTR = 6,
+    CUDNN_TYPE_CONVOLUTION_MODE = 7,
+    CUDNN_TYPE_HEUR_MODE = 8,
+    CUDNN_TYPE_KNOB_TYPE = 9,
+    CUDNN_TYPE_NAN_PROPOGATION = 10,
+    CUDNN_TYPE_NUMERICAL_NOTE = 11,
+    CUDNN_TYPE_LAYOUT_TYPE = 12,
+    CUDNN_TYPE_ATTRIB_NAME = 13,
+    CUDNN_TYPE_POINTWISE_MODE = 14,
+    CUDNN_TYPE_BACKEND_DESCRIPTOR = 15,
+    CUDNN_TYPE_GENSTATS_MODE = 16,
+    CUDNN_TYPE_BN_FINALIZE_STATS_MODE = 17,
+    CUDNN_TYPE_REDUCTION_OPERATOR_TYPE = 18,
+    CUDNN_TYPE_BEHAVIOR_NOTE = 19,
+    CUDNN_TYPE_TENSOR_REORDERING_MODE = 20,
+    CUDNN_TYPE_RESAMPLE_MODE = 21,
+    CUDNN_TYPE_PADDING_MODE = 22,
+    CUDNN_TYPE_INT32 = 23,
+    CUDNN_TYPE_CHAR = 24,
+    CUDNN_TYPE_SIGNAL_MODE = 25,
+    CUDNN_TYPE_FRACTION = 26,
+    CUDNN_TYPE_NORM_MODE = 27,
+    CUDNN_TYPE_NORM_FWD_PHASE = 28,
+    CUDNN_TYPE_RNG_DISTRIBUTION = 29,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnBackendDescriptorType_t {
+    CUDNN_BACKEND_POINTWISE_DESCRIPTOR = 0,
+    CUDNN_BACKEND_CONVOLUTION_DESCRIPTOR = 1,
+    CUDNN_BACKEND_ENGINE_DESCRIPTOR = 2,
+    CUDNN_BACKEND_ENGINECFG_DESCRIPTOR = 3,
+    CUDNN_BACKEND_ENGINEHEUR_DESCRIPTOR = 4,
+    CUDNN_BACKEND_EXECUTION_PLAN_DESCRIPTOR = 5,
+    CUDNN_BACKEND_INTERMEDIATE_INFO_DESCRIPTOR = 6,
+    CUDNN_BACKEND_KNOB_CHOICE_DESCRIPTOR = 7,
+    CUDNN_BACKEND_KNOB_INFO_DESCRIPTOR = 8,
+    CUDNN_BACKEND_LAYOUT_INFO_DESCRIPTOR = 9,
+    CUDNN_BACKEND_OPERATION_CONVOLUTION_FORWARD_DESCRIPTOR = 10,
+    CUDNN_BACKEND_OPERATION_CONVOLUTION_BACKWARD_FILTER_DESCRIPTOR = 11,
+    CUDNN_BACKEND_OPERATION_CONVOLUTION_BACKWARD_DATA_DESCRIPTOR = 12,
+    CUDNN_BACKEND_OPERATION_POINTWISE_DESCRIPTOR = 13,
+    CUDNN_BACKEND_OPERATION_GEN_STATS_DESCRIPTOR = 14,
+    CUDNN_BACKEND_OPERATIONGRAPH_DESCRIPTOR = 15,
+    CUDNN_BACKEND_VARIANT_PACK_DESCRIPTOR = 16,
+    CUDNN_BACKEND_TENSOR_DESCRIPTOR = 17,
+    CUDNN_BACKEND_MATMUL_DESCRIPTOR = 18,
+    CUDNN_BACKEND_OPERATION_MATMUL_DESCRIPTOR = 19,
+    CUDNN_BACKEND_OPERATION_BN_FINALIZE_STATISTICS_DESCRIPTOR = 20,
+    CUDNN_BACKEND_REDUCTION_DESCRIPTOR = 21,
+    CUDNN_BACKEND_OPERATION_REDUCTION_DESCRIPTOR = 22,
+    CUDNN_BACKEND_OPERATION_BN_BWD_WEIGHTS_DESCRIPTOR = 23,
+    CUDNN_BACKEND_RESAMPLE_DESCRIPTOR = 24,
+    CUDNN_BACKEND_OPERATION_RESAMPLE_FWD_DESCRIPTOR = 25,
+    CUDNN_BACKEND_OPERATION_RESAMPLE_BWD_DESCRIPTOR = 26,
+    CUDNN_BACKEND_OPERATION_CONCAT_DESCRIPTOR = 27,
+    CUDNN_BACKEND_OPERATION_SIGNAL_DESCRIPTOR = 28,
+    CUDNN_BACKEND_OPERATION_NORM_FORWARD_DESCRIPTOR = 29,
+    CUDNN_BACKEND_OPERATION_NORM_BACKWARD_DESCRIPTOR = 30,
+    CUDNN_BACKEND_OPERATION_RESHAPE_DESCRIPTOR = 31,
+    CUDNN_BACKEND_RNG_DESCRIPTOR = 32,
+    CUDNN_BACKEND_OPERATION_RNG_DESCRIPTOR = 33,
+    CUDNN_BACKEND_KERNEL_CACHE_DESCRIPTOR = 34,
+    CUDNN_BACKEND_OPERATION_PAGED_CACHE_LOAD_DESCRIPTOR = 35,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnBackendNumericalNote_t {
+    CUDNN_NUMERICAL_NOTE_TENSOR_CORE = 0,
+    CUDNN_NUMERICAL_NOTE_DOWN_CONVERT_INPUTS = 1,
+    CUDNN_NUMERICAL_NOTE_REDUCED_PRECISION_REDUCTION = 2,
+    CUDNN_NUMERICAL_NOTE_FFT = 3,
+    CUDNN_NUMERICAL_NOTE_NONDETERMINISTIC = 4,
+    CUDNN_NUMERICAL_NOTE_WINOGRAD = 5,
+    CUDNN_NUMERICAL_NOTE_WINOGRAD_TILE_4x4 = 6,
+    CUDNN_NUMERICAL_NOTE_WINOGRAD_TILE_6x6 = 7,
+    CUDNN_NUMERICAL_NOTE_WINOGRAD_TILE_13x13 = 8,
+    CUDNN_NUMERICAL_NOTE_STRICT_NAN_PROP = 9,
+    CUDNN_NUMERICAL_NOTE_TYPE_COUNT = 10,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnBackendBehaviorNote_t {
+    CUDNN_BEHAVIOR_NOTE_RUNTIME_COMPILATION = 0,
+    CUDNN_BEHAVIOR_NOTE_REQUIRES_FILTER_INT8x32_REORDER = 1,
+    CUDNN_BEHAVIOR_NOTE_REQUIRES_BIAS_INT8x32_REORDER = 2,
+    CUDNN_BEHAVIOR_NOTE_SUPPORTS_CUDA_GRAPH_NATIVE_API = 3,
+    CUDNN_BEHAVIOR_NOTE_TYPE_COUNT = 4,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnBackendKnobType_t {
+    CUDNN_KNOB_TYPE_SPLIT_K = 0,
+    CUDNN_KNOB_TYPE_SWIZZLE = 1,
+    CUDNN_KNOB_TYPE_TILE_SIZE = 2,
+    CUDNN_KNOB_TYPE_USE_TEX = 3,
+    CUDNN_KNOB_TYPE_EDGE = 4,
+    CUDNN_KNOB_TYPE_KBLOCK = 5,
+    CUDNN_KNOB_TYPE_LDGA = 6,
+    CUDNN_KNOB_TYPE_LDGB = 7,
+    CUDNN_KNOB_TYPE_CHUNK_K = 8,
+    CUDNN_KNOB_TYPE_SPLIT_H = 9,
+    CUDNN_KNOB_TYPE_WINO_TILE = 10,
+    CUDNN_KNOB_TYPE_MULTIPLY = 11,
+    CUDNN_KNOB_TYPE_SPLIT_K_BUF = 12,
+    CUDNN_KNOB_TYPE_TILEK = 13,
+    CUDNN_KNOB_TYPE_STAGES = 14,
+    CUDNN_KNOB_TYPE_REDUCTION_MODE = 15,
+    CUDNN_KNOB_TYPE_CTA_SPLIT_K_MODE = 16,
+    CUDNN_KNOB_TYPE_SPLIT_K_SLC = 17,
+    CUDNN_KNOB_TYPE_IDX_MODE = 18,
+    CUDNN_KNOB_TYPE_SLICED = 19,
+    CUDNN_KNOB_TYPE_SPLIT_RS = 20,
+    CUDNN_KNOB_TYPE_SINGLEBUFFER = 21,
+    CUDNN_KNOB_TYPE_LDGC = 22,
+    CUDNN_KNOB_TYPE_SPECFILT = 23,
+    CUDNN_KNOB_TYPE_KERNEL_CFG = 24,
+    CUDNN_KNOB_TYPE_WORKSPACE = 25,
+    CUDNN_KNOB_TYPE_TILE_CGA = 26,
+    CUDNN_KNOB_TYPE_TILE_CGA_M = 27,
+    CUDNN_KNOB_TYPE_TILE_CGA_N = 28,
+    CUDNN_KNOB_TYPE_BLOCK_SIZE = 29,
+    CUDNN_KNOB_TYPE_OCCUPANCY = 30,
+    CUDNN_KNOB_TYPE_ARRAY_SIZE_PER_THREAD = 31,
+    CUDNN_KNOB_TYPE_NUM_C_PER_BLOCK = 32,
+    CUDNN_KNOB_TYPE_SPLIT_COLS = 33,
+    CUDNN_KNOB_TYPE_TILE_ROWS = 34,
+    CUDNN_KNOB_TYPE_TILE_COLS = 35,
+    CUDNN_KNOB_TYPE_LOAD_SIZE = 36,
+    CUDNN_KNOB_TYPE_COUNTS = 37,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnBackendLayoutType_t {
+    CUDNN_LAYOUT_TYPE_PREFERRED_NCHW = 0,
+    CUDNN_LAYOUT_TYPE_PREFERRED_NHWC = 1,
+    CUDNN_LAYOUT_TYPE_PREFERRED_PAD4CK = 2,
+    CUDNN_LAYOUT_TYPE_PREFERRED_PAD8CK = 3,
+    CUDNN_LAYOUT_TYPE_COUNT = 4,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnBackendHeurMode_t {
+    CUDNN_HEUR_MODE_INSTANT = 0,
+    CUDNN_HEUR_MODE_B = 1,
+    CUDNN_HEUR_MODE_FALLBACK = 2,
+    CUDNN_HEUR_MODE_A = 3,
+    CUDNN_HEUR_MODES_COUNT = 4,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnBackendTensorReordering_t {
+    CUDNN_TENSOR_REORDERING_NONE = 0,
+    CUDNN_TENSOR_REORDERING_INT8x32 = 1,
+    CUDNN_TENSOR_REORDERING_F16x16 = 2,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnPaddingMode_t {
+    CUDNN_ZERO_PAD = 0,
+    CUDNN_NEG_INF_PAD = 1,
+    CUDNN_EDGE_VAL_PAD = 2,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnBackendNormMode_t {
+    CUDNN_LAYER_NORM = 0,
+    CUDNN_INSTANCE_NORM = 1,
+    CUDNN_BATCH_NORM = 2,
+    CUDNN_GROUP_NORM = 3,
+    CUDNN_RMS_NORM = 4,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnBackendNormFwdPhase_t {
+    CUDNN_NORM_FWD_INFERENCE = 0,
+    CUDNN_NORM_FWD_TRAINING = 1,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct cudnnTensorStruct {
+    _unused: [u8; 0],
+}
+pub type cudnnTensorDescriptor_t = *mut cudnnTensorStruct;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct cudnnPoolingStruct {
+    _unused: [u8; 0],
+}
+pub type cudnnPoolingDescriptor_t = *mut cudnnPoolingStruct;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct cudnnFilterStruct {
+    _unused: [u8; 0],
+}
+pub type cudnnFilterDescriptor_t = *mut cudnnFilterStruct;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct cudnnLRNStruct {
+    _unused: [u8; 0],
+}
+pub type cudnnLRNDescriptor_t = *mut cudnnLRNStruct;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct cudnnActivationStruct {
+    _unused: [u8; 0],
+}
+pub type cudnnActivationDescriptor_t = *mut cudnnActivationStruct;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct cudnnSpatialTransformerStruct {
+    _unused: [u8; 0],
+}
+pub type cudnnSpatialTransformerDescriptor_t = *mut cudnnSpatialTransformerStruct;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct cudnnOpTensorStruct {
+    _unused: [u8; 0],
+}
+pub type cudnnOpTensorDescriptor_t = *mut cudnnOpTensorStruct;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct cudnnReduceTensorStruct {
+    _unused: [u8; 0],
+}
+pub type cudnnReduceTensorDescriptor_t = *mut cudnnReduceTensorStruct;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct cudnnCTCLossStruct {
+    _unused: [u8; 0],
+}
+pub type cudnnCTCLossDescriptor_t = *mut cudnnCTCLossStruct;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct cudnnTensorTransformStruct {
+    _unused: [u8; 0],
+}
+pub type cudnnTensorTransformDescriptor_t = *mut cudnnTensorTransformStruct;
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnDeterminism_t {
+    CUDNN_NON_DETERMINISTIC = 0,
+    CUDNN_DETERMINISTIC = 1,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnFoldingDirection_t {
+    CUDNN_TRANSFORM_FOLD = 0,
+    CUDNN_TRANSFORM_UNFOLD = 1,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnOpTensorOp_t {
+    CUDNN_OP_TENSOR_ADD = 0,
+    CUDNN_OP_TENSOR_MUL = 1,
+    CUDNN_OP_TENSOR_MIN = 2,
+    CUDNN_OP_TENSOR_MAX = 3,
+    CUDNN_OP_TENSOR_SQRT = 4,
+    CUDNN_OP_TENSOR_NOT = 5,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnReduceTensorIndices_t {
+    CUDNN_REDUCE_TENSOR_NO_INDICES = 0,
+    CUDNN_REDUCE_TENSOR_FLATTENED_INDICES = 1,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnIndicesType_t {
+    CUDNN_32BIT_INDICES = 0,
+    CUDNN_64BIT_INDICES = 1,
+    CUDNN_16BIT_INDICES = 2,
+    CUDNN_8BIT_INDICES = 3,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnSoftmaxAlgorithm_t {
+    CUDNN_SOFTMAX_FAST = 0,
+    CUDNN_SOFTMAX_ACCURATE = 1,
+    CUDNN_SOFTMAX_LOG = 2,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnSoftmaxMode_t {
+    CUDNN_SOFTMAX_MODE_INSTANCE = 0,
+    CUDNN_SOFTMAX_MODE_CHANNEL = 1,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnPoolingMode_t {
+    CUDNN_POOLING_MAX = 0,
+    CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING = 1,
+    CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING = 2,
+    CUDNN_POOLING_MAX_DETERMINISTIC = 3,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnLRNMode_t {
+    CUDNN_LRN_CROSS_CHANNEL_DIM1 = 0,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnDivNormMode_t {
+    CUDNN_DIVNORM_PRECOMPUTED_MEANS = 0,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnBatchNormMode_t {
+    CUDNN_BATCHNORM_PER_ACTIVATION = 0,
+    CUDNN_BATCHNORM_SPATIAL = 1,
+    CUDNN_BATCHNORM_SPATIAL_PERSISTENT = 2,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnBatchNormOps_t {
+    CUDNN_BATCHNORM_OPS_BN = 0,
+    CUDNN_BATCHNORM_OPS_BN_ACTIVATION = 1,
+    CUDNN_BATCHNORM_OPS_BN_ADD_ACTIVATION = 2,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnNormMode_t {
+    CUDNN_NORM_PER_ACTIVATION = 0,
+    CUDNN_NORM_PER_CHANNEL = 1,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnNormAlgo_t {
+    CUDNN_NORM_ALGO_STANDARD = 0,
+    CUDNN_NORM_ALGO_PERSIST = 1,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnNormOps_t {
+    CUDNN_NORM_OPS_NORM = 0,
+    CUDNN_NORM_OPS_NORM_ACTIVATION = 1,
+    CUDNN_NORM_OPS_NORM_ADD_ACTIVATION = 2,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnSamplerType_t {
+    CUDNN_SAMPLER_BILINEAR = 0,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct cudnnDropoutStruct {
+    _unused: [u8; 0],
+}
+pub type cudnnDropoutDescriptor_t = *mut cudnnDropoutStruct;
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnConvolutionFwdAlgo_t {
+    CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM = 0,
+    CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM = 1,
+    CUDNN_CONVOLUTION_FWD_ALGO_GEMM = 2,
+    CUDNN_CONVOLUTION_FWD_ALGO_DIRECT = 3,
+    CUDNN_CONVOLUTION_FWD_ALGO_FFT = 4,
+    CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING = 5,
+    CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD = 6,
+    CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED = 7,
+    CUDNN_CONVOLUTION_FWD_ALGO_COUNT = 8,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnConvolutionBwdFilterAlgo_t {
+    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0 = 0,
+    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1 = 1,
+    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT = 2,
+    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3 = 3,
+    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD = 4,
+    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED = 5,
+    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING = 6,
+    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_COUNT = 7,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnConvolutionBwdDataAlgo_t {
+    CUDNN_CONVOLUTION_BWD_DATA_ALGO_0 = 0,
+    CUDNN_CONVOLUTION_BWD_DATA_ALGO_1 = 1,
+    CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT = 2,
+    CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING = 3,
+    CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD = 4,
+    CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED = 5,
+    CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT = 6,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnCTCLossAlgo_t {
+    CUDNN_CTC_LOSS_ALGO_DETERMINISTIC = 0,
+    CUDNN_CTC_LOSS_ALGO_NON_DETERMINISTIC = 1,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum cudnnRNNAlgo_t {
+    CUDNN_RNN_ALGO_STANDARD = 0,
+    CUDNN_RNN_ALGO_PERSIST_STATIC = 1,
+    CUDNN_RNN_ALGO_PERSIST_DYNAMIC = 2,
+    CUDNN_RNN_ALGO_PERSIST_STATIC_SMALL_H = 3,
+    CUDNN_RNN_ALGO_COUNT = 4,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub enum cudnnForwardMode_t {
     CUDNN_FWD_MODE_INFERENCE = 0,
     CUDNN_FWD_MODE_TRAINING = 1,
@@ -687,19 +1176,12 @@ pub enum cudnnRNNDataLayout_t {
     CUDNN_RNN_DATA_LAYOUT_SEQ_MAJOR_PACKED = 1,
     CUDNN_RNN_DATA_LAYOUT_BATCH_MAJOR_UNPACKED = 2,
 }
-pub type cudnnRNNPaddingMode_t = ::core::ffi::c_uint;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct cudnnRNNStruct {
     _unused: [u8; 0],
 }
 pub type cudnnRNNDescriptor_t = *mut cudnnRNNStruct;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct cudnnPersistentRNNPlan {
-    _unused: [u8; 0],
-}
-pub type cudnnPersistentRNNPlan_t = *mut cudnnPersistentRNNPlan;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct cudnnRNNDataStruct {
@@ -720,7 +1202,6 @@ pub struct cudnnSeqDataStruct {
     _unused: [u8; 0],
 }
 pub type cudnnSeqDataDescriptor_t = *mut cudnnSeqDataStruct;
-pub type cudnnAttnQueryMap_t = ::core::ffi::c_uint;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct cudnnAttnStruct {
@@ -757,18 +1238,6 @@ pub struct cudnnConvolutionStruct {
     _unused: [u8; 0],
 }
 pub type cudnnConvolutionDescriptor_t = *mut cudnnConvolutionStruct;
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnConvolutionMode_t {
-    CUDNN_CONVOLUTION = 0,
-    CUDNN_CROSS_CORRELATION = 1,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnReorderType_t {
-    CUDNN_DEFAULT_REORDER = 0,
-    CUDNN_NO_REORDER = 1,
-}
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 pub struct cudnnConvolutionFwdAlgoPerfStruct {
@@ -1216,298 +1685,18 @@ impl Default for cudnnConvolutionBwdFilterAlgoPerfStruct {
     }
 }
 pub type cudnnConvolutionBwdFilterAlgoPerf_t = cudnnConvolutionBwdFilterAlgoPerfStruct;
-pub type cudnnBackendDescriptor_t = *mut ::core::ffi::c_void;
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnPointwiseMode_t {
-    CUDNN_POINTWISE_ADD = 0,
-    CUDNN_POINTWISE_MUL = 1,
-    CUDNN_POINTWISE_MIN = 2,
-    CUDNN_POINTWISE_MAX = 3,
-    CUDNN_POINTWISE_SQRT = 4,
-    CUDNN_POINTWISE_RELU_FWD = 100,
-    CUDNN_POINTWISE_TANH_FWD = 101,
-    CUDNN_POINTWISE_SIGMOID_FWD = 102,
-    CUDNN_POINTWISE_ELU_FWD = 103,
-    CUDNN_POINTWISE_GELU_FWD = 104,
-    CUDNN_POINTWISE_SOFTPLUS_FWD = 105,
-    CUDNN_POINTWISE_SWISH_FWD = 106,
-    CUDNN_POINTWISE_RELU_BWD = 200,
-    CUDNN_POINTWISE_TANH_BWD = 201,
-    CUDNN_POINTWISE_SIGMOID_BWD = 202,
-    CUDNN_POINTWISE_ELU_BWD = 203,
-    CUDNN_POINTWISE_GELU_BWD = 204,
-    CUDNN_POINTWISE_SOFTPLUS_BWD = 205,
-    CUDNN_POINTWISE_SWISH_BWD = 206,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnGenStatsMode_t {
-    CUDNN_GENSTATS_SUM_SQSUM = 0,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnBnFinalizeStatsMode_t {
-    CUDNN_BN_FINALIZE_STATISTICS_TRAINING = 0,
-    CUDNN_BN_FINALIZE_STATISTICS_INFERENCE = 1,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnBackendAttributeName_t {
-    CUDNN_ATTR_POINTWISE_MODE = 0,
-    CUDNN_ATTR_POINTWISE_MATH_PREC = 1,
-    CUDNN_ATTR_POINTWISE_NAN_PROPAGATION = 2,
-    CUDNN_ATTR_POINTWISE_RELU_LOWER_CLIP = 3,
-    CUDNN_ATTR_POINTWISE_RELU_UPPER_CLIP = 4,
-    CUDNN_ATTR_POINTWISE_RELU_LOWER_CLIP_SLOPE = 5,
-    CUDNN_ATTR_POINTWISE_ELU_ALPHA = 6,
-    CUDNN_ATTR_POINTWISE_SOFTPLUS_BETA = 7,
-    CUDNN_ATTR_POINTWISE_SWISH_BETA = 8,
-    CUDNN_ATTR_CONVOLUTION_COMP_TYPE = 100,
-    CUDNN_ATTR_CONVOLUTION_CONV_MODE = 101,
-    CUDNN_ATTR_CONVOLUTION_DILATIONS = 102,
-    CUDNN_ATTR_CONVOLUTION_FILTER_STRIDES = 103,
-    CUDNN_ATTR_CONVOLUTION_POST_PADDINGS = 104,
-    CUDNN_ATTR_CONVOLUTION_PRE_PADDINGS = 105,
-    CUDNN_ATTR_CONVOLUTION_SPATIAL_DIMS = 106,
-    CUDNN_ATTR_ENGINEHEUR_MODE = 200,
-    CUDNN_ATTR_ENGINEHEUR_OPERATION_GRAPH = 201,
-    CUDNN_ATTR_ENGINEHEUR_RESULTS = 202,
-    CUDNN_ATTR_ENGINECFG_ENGINE = 300,
-    CUDNN_ATTR_ENGINECFG_INTERMEDIATE_INFO = 301,
-    CUDNN_ATTR_ENGINECFG_KNOB_CHOICES = 302,
-    CUDNN_ATTR_EXECUTION_PLAN_HANDLE = 400,
-    CUDNN_ATTR_EXECUTION_PLAN_ENGINE_CONFIG = 401,
-    CUDNN_ATTR_EXECUTION_PLAN_WORKSPACE_SIZE = 402,
-    CUDNN_ATTR_EXECUTION_PLAN_COMPUTED_INTERMEDIATE_UIDS = 403,
-    CUDNN_ATTR_EXECUTION_PLAN_RUN_ONLY_INTERMEDIATE_UIDS = 404,
-    CUDNN_ATTR_INTERMEDIATE_INFO_UNIQUE_ID = 500,
-    CUDNN_ATTR_INTERMEDIATE_INFO_SIZE = 501,
-    CUDNN_ATTR_INTERMEDIATE_INFO_DEPENDENT_DATA_UIDS = 502,
-    CUDNN_ATTR_INTERMEDIATE_INFO_DEPENDENT_ATTRIBUTES = 503,
-    CUDNN_ATTR_KNOB_CHOICE_KNOB_TYPE = 600,
-    CUDNN_ATTR_KNOB_CHOICE_KNOB_VALUE = 601,
-    CUDNN_ATTR_OPERATION_CONVOLUTION_FORWARD_ALPHA = 700,
-    CUDNN_ATTR_OPERATION_CONVOLUTION_FORWARD_BETA = 701,
-    CUDNN_ATTR_OPERATION_CONVOLUTION_FORWARD_CONV_DESC = 702,
-    CUDNN_ATTR_OPERATION_CONVOLUTION_FORWARD_W = 703,
-    CUDNN_ATTR_OPERATION_CONVOLUTION_FORWARD_X = 704,
-    CUDNN_ATTR_OPERATION_CONVOLUTION_FORWARD_Y = 705,
-    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_DATA_ALPHA = 706,
-    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_DATA_BETA = 707,
-    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_DATA_CONV_DESC = 708,
-    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_DATA_W = 709,
-    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_DATA_DX = 710,
-    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_DATA_DY = 711,
-    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_FILTER_ALPHA = 712,
-    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_FILTER_BETA = 713,
-    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_FILTER_CONV_DESC = 714,
-    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_FILTER_DW = 715,
-    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_FILTER_X = 716,
-    CUDNN_ATTR_OPERATION_CONVOLUTION_BWD_FILTER_DY = 717,
-    CUDNN_ATTR_OPERATION_POINTWISE_PW_DESCRIPTOR = 750,
-    CUDNN_ATTR_OPERATION_POINTWISE_XDESC = 751,
-    CUDNN_ATTR_OPERATION_POINTWISE_BDESC = 752,
-    CUDNN_ATTR_OPERATION_POINTWISE_YDESC = 753,
-    CUDNN_ATTR_OPERATION_POINTWISE_ALPHA1 = 754,
-    CUDNN_ATTR_OPERATION_POINTWISE_ALPHA2 = 755,
-    CUDNN_ATTR_OPERATION_POINTWISE_DXDESC = 756,
-    CUDNN_ATTR_OPERATION_POINTWISE_DYDESC = 757,
-    CUDNN_ATTR_OPERATION_GENSTATS_MODE = 770,
-    CUDNN_ATTR_OPERATION_GENSTATS_MATH_PREC = 771,
-    CUDNN_ATTR_OPERATION_GENSTATS_XDESC = 772,
-    CUDNN_ATTR_OPERATION_GENSTATS_SUMDESC = 773,
-    CUDNN_ATTR_OPERATION_GENSTATS_SQSUMDESC = 774,
-    CUDNN_ATTR_OPERATION_BN_FINALIZE_STATS_MODE = 780,
-    CUDNN_ATTR_OPERATION_BN_FINALIZE_MATH_PREC = 781,
-    CUDNN_ATTR_OPERATION_BN_FINALIZE_Y_SUM_DESC = 782,
-    CUDNN_ATTR_OPERATION_BN_FINALIZE_Y_SQ_SUM_DESC = 783,
-    CUDNN_ATTR_OPERATION_BN_FINALIZE_SCALE_DESC = 784,
-    CUDNN_ATTR_OPERATION_BN_FINALIZE_BIAS_DESC = 785,
-    CUDNN_ATTR_OPERATION_BN_FINALIZE_PREV_RUNNING_MEAN_DESC = 786,
-    CUDNN_ATTR_OPERATION_BN_FINALIZE_PREV_RUNNING_VAR_DESC = 787,
-    CUDNN_ATTR_OPERATION_BN_FINALIZE_UPDATED_RUNNING_MEAN_DESC = 788,
-    CUDNN_ATTR_OPERATION_BN_FINALIZE_UPDATED_RUNNING_VAR_DESC = 789,
-    CUDNN_ATTR_OPERATION_BN_FINALIZE_SAVED_MEAN_DESC = 790,
-    CUDNN_ATTR_OPERATION_BN_FINALIZE_SAVED_INV_STD_DESC = 791,
-    CUDNN_ATTR_OPERATION_BN_FINALIZE_EQ_SCALE_DESC = 792,
-    CUDNN_ATTR_OPERATION_BN_FINALIZE_EQ_BIAS_DESC = 793,
-    CUDNN_ATTR_OPERATION_BN_FINALIZE_ACCUM_COUNT_DESC = 794,
-    CUDNN_ATTR_OPERATION_BN_FINALIZE_EPSILON_DESC = 795,
-    CUDNN_ATTR_OPERATION_BN_FINALIZE_EXP_AVERATE_FACTOR_DESC = 796,
-    CUDNN_ATTR_OPERATIONGRAPH_HANDLE = 800,
-    CUDNN_ATTR_OPERATIONGRAPH_OPS = 801,
-    CUDNN_ATTR_OPERATIONGRAPH_ENGINE_GLOBAL_COUNT = 802,
-    CUDNN_ATTR_TENSOR_BYTE_ALIGNMENT = 900,
-    CUDNN_ATTR_TENSOR_DATA_TYPE = 901,
-    CUDNN_ATTR_TENSOR_DIMENSIONS = 902,
-    CUDNN_ATTR_TENSOR_STRIDES = 903,
-    CUDNN_ATTR_TENSOR_VECTOR_COUNT = 904,
-    CUDNN_ATTR_TENSOR_VECTORIZED_DIMENSION = 905,
-    CUDNN_ATTR_TENSOR_UNIQUE_ID = 906,
-    CUDNN_ATTR_TENSOR_IS_VIRTUAL = 907,
-    CUDNN_ATTR_TENSOR_IS_BY_VALUE = 908,
-    CUDNN_ATTR_VARIANT_PACK_UNIQUE_IDS = 1000,
-    CUDNN_ATTR_VARIANT_PACK_DATA_POINTERS = 1001,
-    CUDNN_ATTR_VARIANT_PACK_INTERMEDIATES = 1002,
-    CUDNN_ATTR_VARIANT_PACK_WORKSPACE = 1003,
-    CUDNN_ATTR_LAYOUT_INFO_TENSOR_UID = 1100,
-    CUDNN_ATTR_LAYOUT_INFO_TYPES = 1101,
-    CUDNN_ATTR_KNOB_INFO_TYPE = 1200,
-    CUDNN_ATTR_KNOB_INFO_MAXIMUM_VALUE = 1201,
-    CUDNN_ATTR_KNOB_INFO_MINIMUM_VALUE = 1202,
-    CUDNN_ATTR_KNOB_INFO_STRIDE = 1203,
-    CUDNN_ATTR_ENGINE_OPERATION_GRAPH = 1300,
-    CUDNN_ATTR_ENGINE_GLOBAL_INDEX = 1301,
-    CUDNN_ATTR_ENGINE_KNOB_INFO = 1302,
-    CUDNN_ATTR_ENGINE_NUMERICAL_NOTE = 1303,
-    CUDNN_ATTR_ENGINE_LAYOUT_INFO = 1304,
-    CUDNN_ATTR_ENGINE_BEHAVIOR_NOTE = 1305,
-    CUDNN_ATTR_MATMUL_COMP_TYPE = 1500,
-    CUDNN_ATTR_OPERATION_MATMUL_ADESC = 1520,
-    CUDNN_ATTR_OPERATION_MATMUL_BDESC = 1521,
-    CUDNN_ATTR_OPERATION_MATMUL_CDESC = 1522,
-    CUDNN_ATTR_OPERATION_MATMUL_DESC = 1523,
-    CUDNN_ATTR_OPERATION_MATMUL_IRREGULARLY_STRIDED_BATCH_COUNT = 1524,
-    CUDNN_ATTR_REDUCTION_OPERATOR = 1600,
-    CUDNN_ATTR_REDUCTION_COMP_TYPE = 1601,
-    CUDNN_ATTR_OPERATION_REDUCTION_XDESC = 1610,
-    CUDNN_ATTR_OPERATION_REDUCTION_YDESC = 1611,
-    CUDNN_ATTR_OPERATION_REDUCTION_DESC = 1612,
-    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_MATH_PREC = 1620,
-    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_MEAN_DESC = 1621,
-    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_INVSTD_DESC = 1622,
-    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_BN_SCALE_DESC = 1623,
-    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_X_DESC = 1624,
-    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_DY_DESC = 1625,
-    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_DBN_SCALE_DESC = 1626,
-    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_DBN_BIAS_DESC = 1627,
-    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_EQ_DY_SCALE_DESC = 1628,
-    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_EQ_X_SCALE_DESC = 1629,
-    CUDNN_ATTR_OPERATION_BN_BWD_WEIGHTS_EQ_BIAS = 1630,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnBackendAttributeType_t {
-    CUDNN_TYPE_HANDLE = 0,
-    CUDNN_TYPE_DATA_TYPE = 1,
-    CUDNN_TYPE_BOOLEAN = 2,
-    CUDNN_TYPE_INT64 = 3,
-    CUDNN_TYPE_FLOAT = 4,
-    CUDNN_TYPE_DOUBLE = 5,
-    CUDNN_TYPE_VOID_PTR = 6,
-    CUDNN_TYPE_CONVOLUTION_MODE = 7,
-    CUDNN_TYPE_HEUR_MODE = 8,
-    CUDNN_TYPE_KNOB_TYPE = 9,
-    CUDNN_TYPE_NAN_PROPOGATION = 10,
-    CUDNN_TYPE_NUMERICAL_NOTE = 11,
-    CUDNN_TYPE_LAYOUT_TYPE = 12,
-    CUDNN_TYPE_ATTRIB_NAME = 13,
-    CUDNN_TYPE_POINTWISE_MODE = 14,
-    CUDNN_TYPE_BACKEND_DESCRIPTOR = 15,
-    CUDNN_TYPE_GENSTATS_MODE = 16,
-    CUDNN_TYPE_BN_FINALIZE_STATS_MODE = 17,
-    CUDNN_TYPE_REDUCTION_OPERATOR_TYPE = 18,
-    CUDNN_TYPE_BEHAVIOR_NOTE = 19,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnBackendDescriptorType_t {
-    CUDNN_BACKEND_POINTWISE_DESCRIPTOR = 0,
-    CUDNN_BACKEND_CONVOLUTION_DESCRIPTOR = 1,
-    CUDNN_BACKEND_ENGINE_DESCRIPTOR = 2,
-    CUDNN_BACKEND_ENGINECFG_DESCRIPTOR = 3,
-    CUDNN_BACKEND_ENGINEHEUR_DESCRIPTOR = 4,
-    CUDNN_BACKEND_EXECUTION_PLAN_DESCRIPTOR = 5,
-    CUDNN_BACKEND_INTERMEDIATE_INFO_DESCRIPTOR = 6,
-    CUDNN_BACKEND_KNOB_CHOICE_DESCRIPTOR = 7,
-    CUDNN_BACKEND_KNOB_INFO_DESCRIPTOR = 8,
-    CUDNN_BACKEND_LAYOUT_INFO_DESCRIPTOR = 9,
-    CUDNN_BACKEND_OPERATION_CONVOLUTION_FORWARD_DESCRIPTOR = 10,
-    CUDNN_BACKEND_OPERATION_CONVOLUTION_BACKWARD_FILTER_DESCRIPTOR = 11,
-    CUDNN_BACKEND_OPERATION_CONVOLUTION_BACKWARD_DATA_DESCRIPTOR = 12,
-    CUDNN_BACKEND_OPERATION_POINTWISE_DESCRIPTOR = 13,
-    CUDNN_BACKEND_OPERATION_GEN_STATS_DESCRIPTOR = 14,
-    CUDNN_BACKEND_OPERATIONGRAPH_DESCRIPTOR = 15,
-    CUDNN_BACKEND_VARIANT_PACK_DESCRIPTOR = 16,
-    CUDNN_BACKEND_TENSOR_DESCRIPTOR = 17,
-    CUDNN_BACKEND_MATMUL_DESCRIPTOR = 18,
-    CUDNN_BACKEND_OPERATION_MATMUL_DESCRIPTOR = 19,
-    CUDNN_BACKEND_OPERATION_BN_FINALIZE_STATISTICS_DESCRIPTOR = 20,
-    CUDNN_BACKEND_REDUCTION_DESCRIPTOR = 21,
-    CUDNN_BACKEND_OPERATION_REDUCTION_DESCRIPTOR = 22,
-    CUDNN_BACKEND_OPERATION_BN_BWD_WEIGHTS_DESCRIPTOR = 23,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnBackendNumericalNote_t {
-    CUDNN_NUMERICAL_NOTE_TENSOR_CORE = 0,
-    CUDNN_NUMERICAL_NOTE_DOWN_CONVERT_INPUTS = 1,
-    CUDNN_NUMERICAL_NOTE_REDUCED_PRECISION_REDUCTION = 2,
-    CUDNN_NUMERICAL_NOTE_FFT = 3,
-    CUDNN_NUMERICAL_NOTE_NONDETERMINISTIC = 4,
-    CUDNN_NUMERICAL_NOTE_WINOGRAD = 5,
-    CUDNN_NUMERICAL_NOTE_TYPE_COUNT = 6,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnBackendBehaviorNote_t {
-    CUDNN_BEHAVIOR_NOTE_RUNTIME_COMPILATION = 0,
-    CUDNN_BEHAVIOR_NOTE_TYPE_COUNT = 1,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnBackendKnobType_t {
-    CUDNN_KNOB_TYPE_SPLIT_K = 0,
-    CUDNN_KNOB_TYPE_SWIZZLE = 1,
-    CUDNN_KNOB_TYPE_TILE_SIZE = 2,
-    CUDNN_KNOB_TYPE_USE_TEX = 3,
-    CUDNN_KNOB_TYPE_EDGE = 4,
-    CUDNN_KNOB_TYPE_KBLOCK = 5,
-    CUDNN_KNOB_TYPE_LDGA = 6,
-    CUDNN_KNOB_TYPE_LDGB = 7,
-    CUDNN_KNOB_TYPE_CHUNK_K = 8,
-    CUDNN_KNOB_TYPE_SPLIT_H = 9,
-    CUDNN_KNOB_TYPE_WINO_TILE = 10,
-    CUDNN_KNOB_TYPE_MULTIPLY = 11,
-    CUDNN_KNOB_TYPE_SPLIT_K_BUF = 12,
-    CUDNN_KNOB_TYPE_TILEK = 13,
-    CUDNN_KNOB_TYPE_STAGES = 14,
-    CUDNN_KNOB_TYPE_REDUCTION_MODE = 15,
-    CUDNN_KNOB_TYPE_CTA_SPLIT_K_MODE = 16,
-    CUDNN_KNOB_TYPE_SPLIT_K_SLC = 17,
-    CUDNN_KNOB_TYPE_IDX_MODE = 18,
-    CUDNN_KNOB_TYPE_SLICED = 19,
-    CUDNN_KNOB_TYPE_SPLIT_RS = 20,
-    CUDNN_KNOB_TYPE_SINGLEBUFFER = 21,
-    CUDNN_KNOB_TYPE_LDGC = 22,
-    CUDNN_KNOB_TYPE_SPECFILT = 23,
-    CUDNN_KNOB_TYPE_KERNEL_CFG = 24,
-    CUDNN_KNOB_TYPE_COUNTS = 25,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnBackendLayoutType_t {
-    CUDNN_LAYOUT_TYPE_PREFERRED_NCHW = 0,
-    CUDNN_LAYOUT_TYPE_PREFERRED_NHWC = 1,
-    CUDNN_LAYOUT_TYPE_PREFERRED_PAD4CK = 2,
-    CUDNN_LAYOUT_TYPE_PREFERRED_PAD8CK = 3,
-    CUDNN_LAYOUT_TYPE_COUNT = 4,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum cudnnBackendHeurMode_t {
-    CUDNN_HEUR_MODE_INSTANT = 0,
-    CUDNN_HEUR_MODE_B = 1,
-    CUDNN_HEUR_MODES_COUNT = 2,
-}
 extern crate libloading;
 pub struct Lib {
     __library: ::libloading::Library,
     pub cudnnGetVersion: Result<unsafe extern "C" fn() -> usize, ::libloading::Error>,
+    pub cudnnGetMaxDeviceVersion: Result<unsafe extern "C" fn() -> usize, ::libloading::Error>,
     pub cudnnGetCudartVersion: Result<unsafe extern "C" fn() -> usize, ::libloading::Error>,
     pub cudnnGetErrorString: Result<
         unsafe extern "C" fn(status: cudnnStatus_t) -> *const ::core::ffi::c_char,
+        ::libloading::Error,
+    >,
+    pub cudnnGetLastErrorString: Result<
+        unsafe extern "C" fn(message: *mut ::core::ffi::c_char, max_size: usize),
         ::libloading::Error,
     >,
     pub cudnnQueryRuntimeError: Result<
@@ -1538,6 +1727,90 @@ pub struct Lib {
     >,
     pub cudnnGetStream: Result<
         unsafe extern "C" fn(handle: cudnnHandle_t, streamId: *mut cudaStream_t) -> cudnnStatus_t,
+        ::libloading::Error,
+    >,
+    pub cudnnSetCallback: Result<
+        unsafe extern "C" fn(
+            mask: ::core::ffi::c_uint,
+            udata: *mut ::core::ffi::c_void,
+            fptr: cudnnCallback_t,
+        ) -> cudnnStatus_t,
+        ::libloading::Error,
+    >,
+    pub cudnnGetCallback: Result<
+        unsafe extern "C" fn(
+            mask: *mut ::core::ffi::c_uint,
+            udata: *mut *mut ::core::ffi::c_void,
+            fptr: *mut cudnnCallback_t,
+        ) -> cudnnStatus_t,
+        ::libloading::Error,
+    >,
+    pub cudnnGraphVersionCheck:
+        Result<unsafe extern "C" fn() -> cudnnStatus_t, ::libloading::Error>,
+    pub cudnnBackendCreateDescriptor: Result<
+        unsafe extern "C" fn(
+            descriptorType: cudnnBackendDescriptorType_t,
+            descriptor: *mut cudnnBackendDescriptor_t,
+        ) -> cudnnStatus_t,
+        ::libloading::Error,
+    >,
+    pub cudnnBackendDestroyDescriptor: Result<
+        unsafe extern "C" fn(descriptor: cudnnBackendDescriptor_t) -> cudnnStatus_t,
+        ::libloading::Error,
+    >,
+    pub cudnnBackendInitialize: Result<
+        unsafe extern "C" fn(descriptor: cudnnBackendDescriptor_t) -> cudnnStatus_t,
+        ::libloading::Error,
+    >,
+    pub cudnnBackendFinalize: Result<
+        unsafe extern "C" fn(descriptor: cudnnBackendDescriptor_t) -> cudnnStatus_t,
+        ::libloading::Error,
+    >,
+    pub cudnnBackendSetAttribute: Result<
+        unsafe extern "C" fn(
+            descriptor: cudnnBackendDescriptor_t,
+            attributeName: cudnnBackendAttributeName_t,
+            attributeType: cudnnBackendAttributeType_t,
+            elementCount: i64,
+            arrayOfElements: *const ::core::ffi::c_void,
+        ) -> cudnnStatus_t,
+        ::libloading::Error,
+    >,
+    pub cudnnBackendGetAttribute: Result<
+        unsafe extern "C" fn(
+            descriptor: cudnnBackendDescriptor_t,
+            attributeName: cudnnBackendAttributeName_t,
+            attributeType: cudnnBackendAttributeType_t,
+            requestedElementCount: i64,
+            elementCount: *mut i64,
+            arrayOfElements: *mut ::core::ffi::c_void,
+        ) -> cudnnStatus_t,
+        ::libloading::Error,
+    >,
+    pub cudnnBackendExecute: Result<
+        unsafe extern "C" fn(
+            handle: cudnnHandle_t,
+            executionPlan: cudnnBackendDescriptor_t,
+            variantPack: cudnnBackendDescriptor_t,
+        ) -> cudnnStatus_t,
+        ::libloading::Error,
+    >,
+    pub cudnnBackendPopulateCudaGraph: Result<
+        unsafe extern "C" fn(
+            handle: cudnnHandle_t,
+            executionPlan: cudnnBackendDescriptor_t,
+            variantPack: cudnnBackendDescriptor_t,
+            graph: cudaGraph_t,
+        ) -> cudnnStatus_t,
+        ::libloading::Error,
+    >,
+    pub cudnnBackendUpdateCudaGraph: Result<
+        unsafe extern "C" fn(
+            handle: cudnnHandle_t,
+            executionPlan: cudnnBackendDescriptor_t,
+            variantPack: cudnnBackendDescriptor_t,
+            graph: cudaGraph_t,
+        ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
     pub cudnnCreateTensorDescriptor: Result<
@@ -2294,113 +2567,7 @@ pub struct Lib {
         ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
-    pub cudnnCreateAlgorithmDescriptor: Result<
-        unsafe extern "C" fn(algoDesc: *mut cudnnAlgorithmDescriptor_t) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnSetAlgorithmDescriptor: Result<
-        unsafe extern "C" fn(
-            algoDesc: cudnnAlgorithmDescriptor_t,
-            algorithm: cudnnAlgorithm_t,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnGetAlgorithmDescriptor: Result<
-        unsafe extern "C" fn(
-            algoDesc: cudnnAlgorithmDescriptor_t,
-            algorithm: *mut cudnnAlgorithm_t,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnCopyAlgorithmDescriptor: Result<
-        unsafe extern "C" fn(
-            src: cudnnAlgorithmDescriptor_t,
-            dest: cudnnAlgorithmDescriptor_t,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnDestroyAlgorithmDescriptor: Result<
-        unsafe extern "C" fn(algoDesc: cudnnAlgorithmDescriptor_t) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnCreateAlgorithmPerformance: Result<
-        unsafe extern "C" fn(
-            algoPerf: *mut cudnnAlgorithmPerformance_t,
-            numberToCreate: ::core::ffi::c_int,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnSetAlgorithmPerformance: Result<
-        unsafe extern "C" fn(
-            algoPerf: cudnnAlgorithmPerformance_t,
-            algoDesc: cudnnAlgorithmDescriptor_t,
-            status: cudnnStatus_t,
-            time: f32,
-            memory: usize,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnGetAlgorithmPerformance: Result<
-        unsafe extern "C" fn(
-            algoPerf: cudnnAlgorithmPerformance_t,
-            algoDesc: *mut cudnnAlgorithmDescriptor_t,
-            status: *mut cudnnStatus_t,
-            time: *mut f32,
-            memory: *mut usize,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnDestroyAlgorithmPerformance: Result<
-        unsafe extern "C" fn(
-            algoPerf: *mut cudnnAlgorithmPerformance_t,
-            numberToDestroy: ::core::ffi::c_int,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnGetAlgorithmSpaceSize: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            algoDesc: cudnnAlgorithmDescriptor_t,
-            algoSpaceSizeInBytes: *mut usize,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnSaveAlgorithm: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            algoDesc: cudnnAlgorithmDescriptor_t,
-            algoSpace: *mut ::core::ffi::c_void,
-            algoSpaceSizeInBytes: usize,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnRestoreAlgorithm: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            algoSpace: *mut ::core::ffi::c_void,
-            algoSpaceSizeInBytes: usize,
-            algoDesc: cudnnAlgorithmDescriptor_t,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnSetCallback: Result<
-        unsafe extern "C" fn(
-            mask: ::core::ffi::c_uint,
-            udata: *mut ::core::ffi::c_void,
-            fptr: cudnnCallback_t,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnGetCallback: Result<
-        unsafe extern "C" fn(
-            mask: *mut ::core::ffi::c_uint,
-            udata: *mut *mut ::core::ffi::c_void,
-            fptr: *mut cudnnCallback_t,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnOpsInferVersionCheck:
-        Result<unsafe extern "C" fn() -> cudnnStatus_t, ::libloading::Error>,
+    pub cudnnOpsVersionCheck: Result<unsafe extern "C" fn() -> cudnnStatus_t, ::libloading::Error>,
     pub cudnnSoftmaxBackward: Result<
         unsafe extern "C" fn(
             handle: cudnnHandle_t,
@@ -2801,8 +2968,6 @@ pub struct Lib {
         ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
-    pub cudnnOpsTrainVersionCheck:
-        Result<unsafe extern "C" fn() -> cudnnStatus_t, ::libloading::Error>,
     pub cudnnCreateRNNDescriptor: Result<
         unsafe extern "C" fn(rnnDesc: *mut cudnnRNNDescriptor_t) -> cudnnStatus_t,
         ::libloading::Error,
@@ -2851,69 +3016,20 @@ pub struct Lib {
         ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
-    pub cudnnSetRNNDescriptor_v6: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            hiddenSize: ::core::ffi::c_int,
-            numLayers: ::core::ffi::c_int,
-            dropoutDesc: cudnnDropoutDescriptor_t,
-            inputMode: cudnnRNNInputMode_t,
-            direction: cudnnDirectionMode_t,
-            cellMode: cudnnRNNMode_t,
-            algo: cudnnRNNAlgo_t,
-            mathPrec: cudnnDataType_t,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnGetRNNDescriptor_v6: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            hiddenSize: *mut ::core::ffi::c_int,
-            numLayers: *mut ::core::ffi::c_int,
-            dropoutDesc: *mut cudnnDropoutDescriptor_t,
-            inputMode: *mut cudnnRNNInputMode_t,
-            direction: *mut cudnnDirectionMode_t,
-            cellMode: *mut cudnnRNNMode_t,
-            algo: *mut cudnnRNNAlgo_t,
-            mathPrec: *mut cudnnDataType_t,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnSetRNNMatrixMathType: Result<
-        unsafe extern "C" fn(
-            rnnDesc: cudnnRNNDescriptor_t,
-            mType: cudnnMathType_t,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnGetRNNMatrixMathType: Result<
-        unsafe extern "C" fn(
-            rnnDesc: cudnnRNNDescriptor_t,
-            mType: *mut cudnnMathType_t,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnSetRNNBiasMode: Result<
-        unsafe extern "C" fn(
-            rnnDesc: cudnnRNNDescriptor_t,
-            biasMode: cudnnRNNBiasMode_t,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnGetRNNBiasMode: Result<
-        unsafe extern "C" fn(
-            rnnDesc: cudnnRNNDescriptor_t,
-            biasMode: *mut cudnnRNNBiasMode_t,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
     pub cudnnRNNSetClip_v8: Result<
         unsafe extern "C" fn(
             rnnDesc: cudnnRNNDescriptor_t,
             clipMode: cudnnRNNClipMode_t,
             clipNanOpt: cudnnNanPropagation_t,
+            lclip: f64,
+            rclip: f64,
+        ) -> cudnnStatus_t,
+        ::libloading::Error,
+    >,
+    pub cudnnRNNSetClip_v9: Result<
+        unsafe extern "C" fn(
+            rnnDesc: cudnnRNNDescriptor_t,
+            clipMode: cudnnRNNClipMode_t,
             lclip: f64,
             rclip: f64,
         ) -> cudnnStatus_t,
@@ -2929,63 +3045,12 @@ pub struct Lib {
         ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
-    pub cudnnRNNSetClip: Result<
+    pub cudnnRNNGetClip_v9: Result<
         unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            clipMode: cudnnRNNClipMode_t,
-            clipNanOpt: cudnnNanPropagation_t,
-            lclip: f64,
-            rclip: f64,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnRNNGetClip: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
             rnnDesc: cudnnRNNDescriptor_t,
             clipMode: *mut cudnnRNNClipMode_t,
-            clipNanOpt: *mut cudnnNanPropagation_t,
             lclip: *mut f64,
             rclip: *mut f64,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnSetRNNProjectionLayers: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            recProjSize: ::core::ffi::c_int,
-            outProjSize: ::core::ffi::c_int,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnGetRNNProjectionLayers: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            recProjSize: *mut ::core::ffi::c_int,
-            outProjSize: *mut ::core::ffi::c_int,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnCreatePersistentRNNPlan: Result<
-        unsafe extern "C" fn(
-            rnnDesc: cudnnRNNDescriptor_t,
-            minibatch: ::core::ffi::c_int,
-            dataType: cudnnDataType_t,
-            plan: *mut cudnnPersistentRNNPlan_t,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnDestroyPersistentRNNPlan: Result<
-        unsafe extern "C" fn(plan: cudnnPersistentRNNPlan_t) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnSetPersistentRNNPlan: Result<
-        unsafe extern "C" fn(
-            rnnDesc: cudnnRNNDescriptor_t,
-            plan: cudnnPersistentRNNPlan_t,
         ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
@@ -2997,44 +3062,14 @@ pub struct Lib {
         ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
-    pub cudnnGetRNNWorkspaceSize: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            seqLength: ::core::ffi::c_int,
-            xDesc: *const cudnnTensorDescriptor_t,
-            sizeInBytes: *mut usize,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnGetRNNTrainingReserveSize: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            seqLength: ::core::ffi::c_int,
-            xDesc: *const cudnnTensorDescriptor_t,
-            sizeInBytes: *mut usize,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
     pub cudnnGetRNNTempSpaceSizes: Result<
         unsafe extern "C" fn(
             handle: cudnnHandle_t,
             rnnDesc: cudnnRNNDescriptor_t,
-            fMode: cudnnForwardMode_t,
+            fwdMode: cudnnForwardMode_t,
             xDesc: cudnnRNNDataDescriptor_t,
             workSpaceSize: *mut usize,
             reserveSpaceSize: *mut usize,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnGetRNNParamsSize: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            xDesc: cudnnTensorDescriptor_t,
-            sizeInBytes: *mut usize,
-            dataType: cudnnDataType_t,
         ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
@@ -3043,34 +3078,6 @@ pub struct Lib {
             handle: cudnnHandle_t,
             rnnDesc: cudnnRNNDescriptor_t,
             weightSpaceSize: *mut usize,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnGetRNNLinLayerMatrixParams: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            pseudoLayer: ::core::ffi::c_int,
-            xDesc: cudnnTensorDescriptor_t,
-            wDesc: cudnnFilterDescriptor_t,
-            w: *const ::core::ffi::c_void,
-            linLayerID: ::core::ffi::c_int,
-            linLayerMatDesc: cudnnFilterDescriptor_t,
-            linLayerMat: *mut *mut ::core::ffi::c_void,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnGetRNNLinLayerBiasParams: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            pseudoLayer: ::core::ffi::c_int,
-            xDesc: cudnnTensorDescriptor_t,
-            wDesc: cudnnFilterDescriptor_t,
-            w: *const ::core::ffi::c_void,
-            linLayerID: ::core::ffi::c_int,
-            linLayerBiasDesc: cudnnFilterDescriptor_t,
-            linLayerBias: *mut *mut ::core::ffi::c_void,
         ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
@@ -3086,44 +3093,6 @@ pub struct Lib {
             mAddr: *mut *mut ::core::ffi::c_void,
             bDesc: cudnnTensorDescriptor_t,
             bAddr: *mut *mut ::core::ffi::c_void,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnRNNForwardInference: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            seqLength: ::core::ffi::c_int,
-            xDesc: *const cudnnTensorDescriptor_t,
-            x: *const ::core::ffi::c_void,
-            hxDesc: cudnnTensorDescriptor_t,
-            hx: *const ::core::ffi::c_void,
-            cxDesc: cudnnTensorDescriptor_t,
-            cx: *const ::core::ffi::c_void,
-            wDesc: cudnnFilterDescriptor_t,
-            w: *const ::core::ffi::c_void,
-            yDesc: *const cudnnTensorDescriptor_t,
-            y: *mut ::core::ffi::c_void,
-            hyDesc: cudnnTensorDescriptor_t,
-            hy: *mut ::core::ffi::c_void,
-            cyDesc: cudnnTensorDescriptor_t,
-            cy: *mut ::core::ffi::c_void,
-            workSpace: *mut ::core::ffi::c_void,
-            workSpaceSizeInBytes: usize,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnSetRNNPaddingMode: Result<
-        unsafe extern "C" fn(
-            rnnDesc: cudnnRNNDescriptor_t,
-            paddingMode: ::core::ffi::c_uint,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnGetRNNPaddingMode: Result<
-        unsafe extern "C" fn(
-            rnnDesc: cudnnRNNDescriptor_t,
-            paddingMode: *mut ::core::ffi::c_uint,
         ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
@@ -3162,37 +3131,6 @@ pub struct Lib {
         ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
-    pub cudnnRNNForwardInferenceEx: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            xDesc: cudnnRNNDataDescriptor_t,
-            x: *const ::core::ffi::c_void,
-            hxDesc: cudnnTensorDescriptor_t,
-            hx: *const ::core::ffi::c_void,
-            cxDesc: cudnnTensorDescriptor_t,
-            cx: *const ::core::ffi::c_void,
-            wDesc: cudnnFilterDescriptor_t,
-            w: *const ::core::ffi::c_void,
-            yDesc: cudnnRNNDataDescriptor_t,
-            y: *mut ::core::ffi::c_void,
-            hyDesc: cudnnTensorDescriptor_t,
-            hy: *mut ::core::ffi::c_void,
-            cyDesc: cudnnTensorDescriptor_t,
-            cy: *mut ::core::ffi::c_void,
-            kDesc: cudnnRNNDataDescriptor_t,
-            keys: *const ::core::ffi::c_void,
-            cDesc: cudnnRNNDataDescriptor_t,
-            cAttn: *mut ::core::ffi::c_void,
-            iDesc: cudnnRNNDataDescriptor_t,
-            iAttn: *mut ::core::ffi::c_void,
-            qDesc: cudnnRNNDataDescriptor_t,
-            queries: *mut ::core::ffi::c_void,
-            workSpace: *mut ::core::ffi::c_void,
-            workSpaceSizeInBytes: usize,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
     pub cudnnRNNForward: Result<
         unsafe extern "C" fn(
             handle: cudnnHandle_t,
@@ -3215,50 +3153,6 @@ pub struct Lib {
             workSpace: *mut ::core::ffi::c_void,
             reserveSpaceSize: usize,
             reserveSpace: *mut ::core::ffi::c_void,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnSetRNNAlgorithmDescriptor: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            algoDesc: cudnnAlgorithmDescriptor_t,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnGetRNNForwardInferenceAlgorithmMaxCount: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            count: *mut ::core::ffi::c_int,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnFindRNNForwardInferenceAlgorithmEx: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            seqLength: ::core::ffi::c_int,
-            xDesc: *const cudnnTensorDescriptor_t,
-            x: *const ::core::ffi::c_void,
-            hxDesc: cudnnTensorDescriptor_t,
-            hx: *const ::core::ffi::c_void,
-            cxDesc: cudnnTensorDescriptor_t,
-            cx: *const ::core::ffi::c_void,
-            wDesc: cudnnFilterDescriptor_t,
-            w: *const ::core::ffi::c_void,
-            yDesc: *const cudnnTensorDescriptor_t,
-            y: *mut ::core::ffi::c_void,
-            hyDesc: cudnnTensorDescriptor_t,
-            hy: *mut ::core::ffi::c_void,
-            cyDesc: cudnnTensorDescriptor_t,
-            cy: *mut ::core::ffi::c_void,
-            findIntensity: f32,
-            requestedAlgoCount: ::core::ffi::c_int,
-            returnedAlgoCount: *mut ::core::ffi::c_int,
-            perfResults: *mut cudnnAlgorithmPerformance_t,
-            workspace: *mut ::core::ffi::c_void,
-            workSpaceSizeInBytes: usize,
         ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
@@ -3405,66 +3299,7 @@ pub struct Lib {
         ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
-    pub cudnnAdvInferVersionCheck:
-        Result<unsafe extern "C" fn() -> cudnnStatus_t, ::libloading::Error>,
-    pub cudnnRNNForwardTraining: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            seqLength: ::core::ffi::c_int,
-            xDesc: *const cudnnTensorDescriptor_t,
-            x: *const ::core::ffi::c_void,
-            hxDesc: cudnnTensorDescriptor_t,
-            hx: *const ::core::ffi::c_void,
-            cxDesc: cudnnTensorDescriptor_t,
-            cx: *const ::core::ffi::c_void,
-            wDesc: cudnnFilterDescriptor_t,
-            w: *const ::core::ffi::c_void,
-            yDesc: *const cudnnTensorDescriptor_t,
-            y: *mut ::core::ffi::c_void,
-            hyDesc: cudnnTensorDescriptor_t,
-            hy: *mut ::core::ffi::c_void,
-            cyDesc: cudnnTensorDescriptor_t,
-            cy: *mut ::core::ffi::c_void,
-            workSpace: *mut ::core::ffi::c_void,
-            workSpaceSizeInBytes: usize,
-            reserveSpace: *mut ::core::ffi::c_void,
-            reserveSpaceSizeInBytes: usize,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnRNNBackwardData: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            seqLength: ::core::ffi::c_int,
-            yDesc: *const cudnnTensorDescriptor_t,
-            y: *const ::core::ffi::c_void,
-            dyDesc: *const cudnnTensorDescriptor_t,
-            dy: *const ::core::ffi::c_void,
-            dhyDesc: cudnnTensorDescriptor_t,
-            dhy: *const ::core::ffi::c_void,
-            dcyDesc: cudnnTensorDescriptor_t,
-            dcy: *const ::core::ffi::c_void,
-            wDesc: cudnnFilterDescriptor_t,
-            w: *const ::core::ffi::c_void,
-            hxDesc: cudnnTensorDescriptor_t,
-            hx: *const ::core::ffi::c_void,
-            cxDesc: cudnnTensorDescriptor_t,
-            cx: *const ::core::ffi::c_void,
-            dxDesc: *const cudnnTensorDescriptor_t,
-            dx: *mut ::core::ffi::c_void,
-            dhxDesc: cudnnTensorDescriptor_t,
-            dhx: *mut ::core::ffi::c_void,
-            dcxDesc: cudnnTensorDescriptor_t,
-            dcx: *mut ::core::ffi::c_void,
-            workSpace: *mut ::core::ffi::c_void,
-            workSpaceSizeInBytes: usize,
-            reserveSpace: *mut ::core::ffi::c_void,
-            reserveSpaceSizeInBytes: usize,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
+    pub cudnnAdvVersionCheck: Result<unsafe extern "C" fn() -> cudnnStatus_t, ::libloading::Error>,
     pub cudnnRNNBackwardData_v8: Result<
         unsafe extern "C" fn(
             handle: cudnnHandle_t,
@@ -3492,26 +3327,6 @@ pub struct Lib {
         ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
-    pub cudnnRNNBackwardWeights: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            seqLength: ::core::ffi::c_int,
-            xDesc: *const cudnnTensorDescriptor_t,
-            x: *const ::core::ffi::c_void,
-            hxDesc: cudnnTensorDescriptor_t,
-            hx: *const ::core::ffi::c_void,
-            yDesc: *const cudnnTensorDescriptor_t,
-            y: *const ::core::ffi::c_void,
-            workSpace: *const ::core::ffi::c_void,
-            workSpaceSizeInBytes: usize,
-            dwDesc: cudnnFilterDescriptor_t,
-            dw: *mut ::core::ffi::c_void,
-            reserveSpace: *const ::core::ffi::c_void,
-            reserveSpaceSizeInBytes: usize,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
     pub cudnnRNNBackwardWeights_v8: Result<
         unsafe extern "C" fn(
             handle: cudnnHandle_t,
@@ -3530,207 +3345,6 @@ pub struct Lib {
             workSpace: *mut ::core::ffi::c_void,
             reserveSpaceSize: usize,
             reserveSpace: *mut ::core::ffi::c_void,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnRNNForwardTrainingEx: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            xDesc: cudnnRNNDataDescriptor_t,
-            x: *const ::core::ffi::c_void,
-            hxDesc: cudnnTensorDescriptor_t,
-            hx: *const ::core::ffi::c_void,
-            cxDesc: cudnnTensorDescriptor_t,
-            cx: *const ::core::ffi::c_void,
-            wDesc: cudnnFilterDescriptor_t,
-            w: *const ::core::ffi::c_void,
-            yDesc: cudnnRNNDataDescriptor_t,
-            y: *mut ::core::ffi::c_void,
-            hyDesc: cudnnTensorDescriptor_t,
-            hy: *mut ::core::ffi::c_void,
-            cyDesc: cudnnTensorDescriptor_t,
-            cy: *mut ::core::ffi::c_void,
-            kDesc: cudnnRNNDataDescriptor_t,
-            keys: *const ::core::ffi::c_void,
-            cDesc: cudnnRNNDataDescriptor_t,
-            cAttn: *mut ::core::ffi::c_void,
-            iDesc: cudnnRNNDataDescriptor_t,
-            iAttn: *mut ::core::ffi::c_void,
-            qDesc: cudnnRNNDataDescriptor_t,
-            queries: *mut ::core::ffi::c_void,
-            workSpace: *mut ::core::ffi::c_void,
-            workSpaceSizeInBytes: usize,
-            reserveSpace: *mut ::core::ffi::c_void,
-            reserveSpaceSizeInBytes: usize,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnRNNBackwardDataEx: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            yDesc: cudnnRNNDataDescriptor_t,
-            y: *const ::core::ffi::c_void,
-            dyDesc: cudnnRNNDataDescriptor_t,
-            dy: *const ::core::ffi::c_void,
-            dcDesc: cudnnRNNDataDescriptor_t,
-            dcAttn: *const ::core::ffi::c_void,
-            dhyDesc: cudnnTensorDescriptor_t,
-            dhy: *const ::core::ffi::c_void,
-            dcyDesc: cudnnTensorDescriptor_t,
-            dcy: *const ::core::ffi::c_void,
-            wDesc: cudnnFilterDescriptor_t,
-            w: *const ::core::ffi::c_void,
-            hxDesc: cudnnTensorDescriptor_t,
-            hx: *const ::core::ffi::c_void,
-            cxDesc: cudnnTensorDescriptor_t,
-            cx: *const ::core::ffi::c_void,
-            dxDesc: cudnnRNNDataDescriptor_t,
-            dx: *mut ::core::ffi::c_void,
-            dhxDesc: cudnnTensorDescriptor_t,
-            dhx: *mut ::core::ffi::c_void,
-            dcxDesc: cudnnTensorDescriptor_t,
-            dcx: *mut ::core::ffi::c_void,
-            dkDesc: cudnnRNNDataDescriptor_t,
-            dkeys: *mut ::core::ffi::c_void,
-            workSpace: *mut ::core::ffi::c_void,
-            workSpaceSizeInBytes: usize,
-            reserveSpace: *mut ::core::ffi::c_void,
-            reserveSpaceSizeInBytes: usize,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnRNNBackwardWeightsEx: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            xDesc: cudnnRNNDataDescriptor_t,
-            x: *const ::core::ffi::c_void,
-            hxDesc: cudnnTensorDescriptor_t,
-            hx: *const ::core::ffi::c_void,
-            yDesc: cudnnRNNDataDescriptor_t,
-            y: *const ::core::ffi::c_void,
-            workSpace: *mut ::core::ffi::c_void,
-            workSpaceSizeInBytes: usize,
-            dwDesc: cudnnFilterDescriptor_t,
-            dw: *mut ::core::ffi::c_void,
-            reserveSpace: *mut ::core::ffi::c_void,
-            reserveSpaceSizeInBytes: usize,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnGetRNNForwardTrainingAlgorithmMaxCount: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            count: *mut ::core::ffi::c_int,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnFindRNNForwardTrainingAlgorithmEx: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            seqLength: ::core::ffi::c_int,
-            xDesc: *const cudnnTensorDescriptor_t,
-            x: *const ::core::ffi::c_void,
-            hxDesc: cudnnTensorDescriptor_t,
-            hx: *const ::core::ffi::c_void,
-            cxDesc: cudnnTensorDescriptor_t,
-            cx: *const ::core::ffi::c_void,
-            wDesc: cudnnFilterDescriptor_t,
-            w: *const ::core::ffi::c_void,
-            yDesc: *const cudnnTensorDescriptor_t,
-            y: *mut ::core::ffi::c_void,
-            hyDesc: cudnnTensorDescriptor_t,
-            hy: *mut ::core::ffi::c_void,
-            cyDesc: cudnnTensorDescriptor_t,
-            cy: *mut ::core::ffi::c_void,
-            findIntensity: f32,
-            requestedAlgoCount: ::core::ffi::c_int,
-            returnedAlgoCount: *mut ::core::ffi::c_int,
-            perfResults: *mut cudnnAlgorithmPerformance_t,
-            workspace: *mut ::core::ffi::c_void,
-            workSpaceSizeInBytes: usize,
-            reserveSpace: *mut ::core::ffi::c_void,
-            reserveSpaceSizeInBytes: usize,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnGetRNNBackwardDataAlgorithmMaxCount: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            count: *mut ::core::ffi::c_int,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnFindRNNBackwardDataAlgorithmEx: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            seqLength: ::core::ffi::c_int,
-            yDesc: *const cudnnTensorDescriptor_t,
-            y: *const ::core::ffi::c_void,
-            dyDesc: *const cudnnTensorDescriptor_t,
-            dy: *const ::core::ffi::c_void,
-            dhyDesc: cudnnTensorDescriptor_t,
-            dhy: *const ::core::ffi::c_void,
-            dcyDesc: cudnnTensorDescriptor_t,
-            dcy: *const ::core::ffi::c_void,
-            wDesc: cudnnFilterDescriptor_t,
-            w: *const ::core::ffi::c_void,
-            hxDesc: cudnnTensorDescriptor_t,
-            hx: *const ::core::ffi::c_void,
-            cxDesc: cudnnTensorDescriptor_t,
-            cx: *const ::core::ffi::c_void,
-            dxDesc: *const cudnnTensorDescriptor_t,
-            dx: *mut ::core::ffi::c_void,
-            dhxDesc: cudnnTensorDescriptor_t,
-            dhx: *mut ::core::ffi::c_void,
-            dcxDesc: cudnnTensorDescriptor_t,
-            dcx: *mut ::core::ffi::c_void,
-            findIntensity: f32,
-            requestedAlgoCount: ::core::ffi::c_int,
-            returnedAlgoCount: *mut ::core::ffi::c_int,
-            perfResults: *mut cudnnAlgorithmPerformance_t,
-            workspace: *mut ::core::ffi::c_void,
-            workSpaceSizeInBytes: usize,
-            reserveSpace: *mut ::core::ffi::c_void,
-            reserveSpaceSizeInBytes: usize,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnGetRNNBackwardWeightsAlgorithmMaxCount: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            count: *mut ::core::ffi::c_int,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnFindRNNBackwardWeightsAlgorithmEx: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            rnnDesc: cudnnRNNDescriptor_t,
-            seqLength: ::core::ffi::c_int,
-            xDesc: *const cudnnTensorDescriptor_t,
-            x: *const ::core::ffi::c_void,
-            hxDesc: cudnnTensorDescriptor_t,
-            hx: *const ::core::ffi::c_void,
-            yDesc: *const cudnnTensorDescriptor_t,
-            y: *const ::core::ffi::c_void,
-            findIntensity: f32,
-            requestedAlgoCount: ::core::ffi::c_int,
-            returnedAlgoCount: *mut ::core::ffi::c_int,
-            perfResults: *mut cudnnAlgorithmPerformance_t,
-            workspace: *const ::core::ffi::c_void,
-            workSpaceSizeInBytes: usize,
-            dwDesc: cudnnFilterDescriptor_t,
-            dw: *mut ::core::ffi::c_void,
-            reserveSpace: *const ::core::ffi::c_void,
-            reserveSpaceSizeInBytes: usize,
         ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
@@ -3815,6 +3429,16 @@ pub struct Lib {
         ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
+    pub cudnnSetCTCLossDescriptor_v9: Result<
+        unsafe extern "C" fn(
+            ctcLossDesc: cudnnCTCLossDescriptor_t,
+            compType: cudnnDataType_t,
+            normMode: cudnnLossNormalizationMode_t,
+            ctcGradMode: cudnnCTCGradMode_t,
+            maxLabelLength: ::core::ffi::c_int,
+        ) -> cudnnStatus_t,
+        ::libloading::Error,
+    >,
     pub cudnnGetCTCLossDescriptor: Result<
         unsafe extern "C" fn(
             ctcLossDesc: cudnnCTCLossDescriptor_t,
@@ -3837,6 +3461,16 @@ pub struct Lib {
             compType: *mut cudnnDataType_t,
             normMode: *mut cudnnLossNormalizationMode_t,
             gradMode: *mut cudnnNanPropagation_t,
+            maxLabelLength: *mut ::core::ffi::c_int,
+        ) -> cudnnStatus_t,
+        ::libloading::Error,
+    >,
+    pub cudnnGetCTCLossDescriptor_v9: Result<
+        unsafe extern "C" fn(
+            ctcLossDesc: cudnnCTCLossDescriptor_t,
+            compType: *mut cudnnDataType_t,
+            normMode: *mut cudnnLossNormalizationMode_t,
+            ctcGradMode: *mut cudnnCTCGradMode_t,
             maxLabelLength: *mut ::core::ffi::c_int,
         ) -> cudnnStatus_t,
         ::libloading::Error,
@@ -3906,8 +3540,6 @@ pub struct Lib {
         ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
-    pub cudnnAdvTrainVersionCheck:
-        Result<unsafe extern "C" fn() -> cudnnStatus_t, ::libloading::Error>,
     pub cudnnCreateConvolutionDescriptor: Result<
         unsafe extern "C" fn(convDesc: *mut cudnnConvolutionDescriptor_t) -> cudnnStatus_t,
         ::libloading::Error,
@@ -4261,8 +3893,7 @@ pub struct Lib {
         ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
-    pub cudnnCnnInferVersionCheck:
-        Result<unsafe extern "C" fn() -> cudnnStatus_t, ::libloading::Error>,
+    pub cudnnCnnVersionCheck: Result<unsafe extern "C" fn() -> cudnnStatus_t, ::libloading::Error>,
     pub cudnnGetConvolutionBackwardFilterAlgorithmMaxCount: Result<
         unsafe extern "C" fn(
             handle: cudnnHandle_t,
@@ -4436,56 +4067,6 @@ pub struct Lib {
         ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
-    pub cudnnCnnTrainVersionCheck:
-        Result<unsafe extern "C" fn() -> cudnnStatus_t, ::libloading::Error>,
-    pub cudnnBackendCreateDescriptor: Result<
-        unsafe extern "C" fn(
-            descriptorType: cudnnBackendDescriptorType_t,
-            descriptor: *mut cudnnBackendDescriptor_t,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnBackendDestroyDescriptor: Result<
-        unsafe extern "C" fn(descriptor: cudnnBackendDescriptor_t) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnBackendInitialize: Result<
-        unsafe extern "C" fn(descriptor: cudnnBackendDescriptor_t) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnBackendFinalize: Result<
-        unsafe extern "C" fn(descriptor: cudnnBackendDescriptor_t) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnBackendSetAttribute: Result<
-        unsafe extern "C" fn(
-            descriptor: cudnnBackendDescriptor_t,
-            attributeName: cudnnBackendAttributeName_t,
-            attributeType: cudnnBackendAttributeType_t,
-            elementCount: i64,
-            arrayOfElements: *const ::core::ffi::c_void,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnBackendGetAttribute: Result<
-        unsafe extern "C" fn(
-            descriptor: cudnnBackendDescriptor_t,
-            attributeName: cudnnBackendAttributeName_t,
-            attributeType: cudnnBackendAttributeType_t,
-            requestedElementCount: i64,
-            elementCount: *mut i64,
-            arrayOfElements: *mut ::core::ffi::c_void,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
-    pub cudnnBackendExecute: Result<
-        unsafe extern "C" fn(
-            handle: cudnnHandle_t,
-            executionPlan: cudnnBackendDescriptor_t,
-            variantPack: cudnnBackendDescriptor_t,
-        ) -> cudnnStatus_t,
-        ::libloading::Error,
-    >,
 }
 impl Lib {
     pub unsafe fn new<P>(path: P) -> Result<Self, ::libloading::Error>
@@ -4501,14 +4082,36 @@ impl Lib {
     {
         let __library = library.into();
         let cudnnGetVersion = __library.get(b"cudnnGetVersion\0").map(|sym| *sym);
+        let cudnnGetMaxDeviceVersion = __library.get(b"cudnnGetMaxDeviceVersion\0").map(|sym| *sym);
         let cudnnGetCudartVersion = __library.get(b"cudnnGetCudartVersion\0").map(|sym| *sym);
         let cudnnGetErrorString = __library.get(b"cudnnGetErrorString\0").map(|sym| *sym);
+        let cudnnGetLastErrorString = __library.get(b"cudnnGetLastErrorString\0").map(|sym| *sym);
         let cudnnQueryRuntimeError = __library.get(b"cudnnQueryRuntimeError\0").map(|sym| *sym);
         let cudnnGetProperty = __library.get(b"cudnnGetProperty\0").map(|sym| *sym);
         let cudnnCreate = __library.get(b"cudnnCreate\0").map(|sym| *sym);
         let cudnnDestroy = __library.get(b"cudnnDestroy\0").map(|sym| *sym);
         let cudnnSetStream = __library.get(b"cudnnSetStream\0").map(|sym| *sym);
         let cudnnGetStream = __library.get(b"cudnnGetStream\0").map(|sym| *sym);
+        let cudnnSetCallback = __library.get(b"cudnnSetCallback\0").map(|sym| *sym);
+        let cudnnGetCallback = __library.get(b"cudnnGetCallback\0").map(|sym| *sym);
+        let cudnnGraphVersionCheck = __library.get(b"cudnnGraphVersionCheck\0").map(|sym| *sym);
+        let cudnnBackendCreateDescriptor = __library
+            .get(b"cudnnBackendCreateDescriptor\0")
+            .map(|sym| *sym);
+        let cudnnBackendDestroyDescriptor = __library
+            .get(b"cudnnBackendDestroyDescriptor\0")
+            .map(|sym| *sym);
+        let cudnnBackendInitialize = __library.get(b"cudnnBackendInitialize\0").map(|sym| *sym);
+        let cudnnBackendFinalize = __library.get(b"cudnnBackendFinalize\0").map(|sym| *sym);
+        let cudnnBackendSetAttribute = __library.get(b"cudnnBackendSetAttribute\0").map(|sym| *sym);
+        let cudnnBackendGetAttribute = __library.get(b"cudnnBackendGetAttribute\0").map(|sym| *sym);
+        let cudnnBackendExecute = __library.get(b"cudnnBackendExecute\0").map(|sym| *sym);
+        let cudnnBackendPopulateCudaGraph = __library
+            .get(b"cudnnBackendPopulateCudaGraph\0")
+            .map(|sym| *sym);
+        let cudnnBackendUpdateCudaGraph = __library
+            .get(b"cudnnBackendUpdateCudaGraph\0")
+            .map(|sym| *sym);
         let cudnnCreateTensorDescriptor = __library
             .get(b"cudnnCreateTensorDescriptor\0")
             .map(|sym| *sym);
@@ -4714,43 +4317,7 @@ impl Lib {
             .get(b"cudnnGetDropoutDescriptor\0")
             .map(|sym| *sym);
         let cudnnDropoutForward = __library.get(b"cudnnDropoutForward\0").map(|sym| *sym);
-        let cudnnCreateAlgorithmDescriptor = __library
-            .get(b"cudnnCreateAlgorithmDescriptor\0")
-            .map(|sym| *sym);
-        let cudnnSetAlgorithmDescriptor = __library
-            .get(b"cudnnSetAlgorithmDescriptor\0")
-            .map(|sym| *sym);
-        let cudnnGetAlgorithmDescriptor = __library
-            .get(b"cudnnGetAlgorithmDescriptor\0")
-            .map(|sym| *sym);
-        let cudnnCopyAlgorithmDescriptor = __library
-            .get(b"cudnnCopyAlgorithmDescriptor\0")
-            .map(|sym| *sym);
-        let cudnnDestroyAlgorithmDescriptor = __library
-            .get(b"cudnnDestroyAlgorithmDescriptor\0")
-            .map(|sym| *sym);
-        let cudnnCreateAlgorithmPerformance = __library
-            .get(b"cudnnCreateAlgorithmPerformance\0")
-            .map(|sym| *sym);
-        let cudnnSetAlgorithmPerformance = __library
-            .get(b"cudnnSetAlgorithmPerformance\0")
-            .map(|sym| *sym);
-        let cudnnGetAlgorithmPerformance = __library
-            .get(b"cudnnGetAlgorithmPerformance\0")
-            .map(|sym| *sym);
-        let cudnnDestroyAlgorithmPerformance = __library
-            .get(b"cudnnDestroyAlgorithmPerformance\0")
-            .map(|sym| *sym);
-        let cudnnGetAlgorithmSpaceSize = __library
-            .get(b"cudnnGetAlgorithmSpaceSize\0")
-            .map(|sym| *sym);
-        let cudnnSaveAlgorithm = __library.get(b"cudnnSaveAlgorithm\0").map(|sym| *sym);
-        let cudnnRestoreAlgorithm = __library.get(b"cudnnRestoreAlgorithm\0").map(|sym| *sym);
-        let cudnnSetCallback = __library.get(b"cudnnSetCallback\0").map(|sym| *sym);
-        let cudnnGetCallback = __library.get(b"cudnnGetCallback\0").map(|sym| *sym);
-        let cudnnOpsInferVersionCheck = __library
-            .get(b"cudnnOpsInferVersionCheck\0")
-            .map(|sym| *sym);
+        let cudnnOpsVersionCheck = __library.get(b"cudnnOpsVersionCheck\0").map(|sym| *sym);
         let cudnnSoftmaxBackward = __library.get(b"cudnnSoftmaxBackward\0").map(|sym| *sym);
         let cudnnPoolingBackward = __library.get(b"cudnnPoolingBackward\0").map(|sym| *sym);
         let cudnnActivationBackward = __library.get(b"cudnnActivationBackward\0").map(|sym| *sym);
@@ -4803,66 +4370,24 @@ impl Lib {
             .get(b"cudnnSpatialTfSamplerBackward\0")
             .map(|sym| *sym);
         let cudnnDropoutBackward = __library.get(b"cudnnDropoutBackward\0").map(|sym| *sym);
-        let cudnnOpsTrainVersionCheck = __library
-            .get(b"cudnnOpsTrainVersionCheck\0")
-            .map(|sym| *sym);
         let cudnnCreateRNNDescriptor = __library.get(b"cudnnCreateRNNDescriptor\0").map(|sym| *sym);
         let cudnnDestroyRNNDescriptor = __library
             .get(b"cudnnDestroyRNNDescriptor\0")
             .map(|sym| *sym);
         let cudnnSetRNNDescriptor_v8 = __library.get(b"cudnnSetRNNDescriptor_v8\0").map(|sym| *sym);
         let cudnnGetRNNDescriptor_v8 = __library.get(b"cudnnGetRNNDescriptor_v8\0").map(|sym| *sym);
-        let cudnnSetRNNDescriptor_v6 = __library.get(b"cudnnSetRNNDescriptor_v6\0").map(|sym| *sym);
-        let cudnnGetRNNDescriptor_v6 = __library.get(b"cudnnGetRNNDescriptor_v6\0").map(|sym| *sym);
-        let cudnnSetRNNMatrixMathType = __library
-            .get(b"cudnnSetRNNMatrixMathType\0")
-            .map(|sym| *sym);
-        let cudnnGetRNNMatrixMathType = __library
-            .get(b"cudnnGetRNNMatrixMathType\0")
-            .map(|sym| *sym);
-        let cudnnSetRNNBiasMode = __library.get(b"cudnnSetRNNBiasMode\0").map(|sym| *sym);
-        let cudnnGetRNNBiasMode = __library.get(b"cudnnGetRNNBiasMode\0").map(|sym| *sym);
         let cudnnRNNSetClip_v8 = __library.get(b"cudnnRNNSetClip_v8\0").map(|sym| *sym);
+        let cudnnRNNSetClip_v9 = __library.get(b"cudnnRNNSetClip_v9\0").map(|sym| *sym);
         let cudnnRNNGetClip_v8 = __library.get(b"cudnnRNNGetClip_v8\0").map(|sym| *sym);
-        let cudnnRNNSetClip = __library.get(b"cudnnRNNSetClip\0").map(|sym| *sym);
-        let cudnnRNNGetClip = __library.get(b"cudnnRNNGetClip\0").map(|sym| *sym);
-        let cudnnSetRNNProjectionLayers = __library
-            .get(b"cudnnSetRNNProjectionLayers\0")
-            .map(|sym| *sym);
-        let cudnnGetRNNProjectionLayers = __library
-            .get(b"cudnnGetRNNProjectionLayers\0")
-            .map(|sym| *sym);
-        let cudnnCreatePersistentRNNPlan = __library
-            .get(b"cudnnCreatePersistentRNNPlan\0")
-            .map(|sym| *sym);
-        let cudnnDestroyPersistentRNNPlan = __library
-            .get(b"cudnnDestroyPersistentRNNPlan\0")
-            .map(|sym| *sym);
-        let cudnnSetPersistentRNNPlan = __library
-            .get(b"cudnnSetPersistentRNNPlan\0")
-            .map(|sym| *sym);
+        let cudnnRNNGetClip_v9 = __library.get(b"cudnnRNNGetClip_v9\0").map(|sym| *sym);
         let cudnnBuildRNNDynamic = __library.get(b"cudnnBuildRNNDynamic\0").map(|sym| *sym);
-        let cudnnGetRNNWorkspaceSize = __library.get(b"cudnnGetRNNWorkspaceSize\0").map(|sym| *sym);
-        let cudnnGetRNNTrainingReserveSize = __library
-            .get(b"cudnnGetRNNTrainingReserveSize\0")
-            .map(|sym| *sym);
         let cudnnGetRNNTempSpaceSizes = __library
             .get(b"cudnnGetRNNTempSpaceSizes\0")
             .map(|sym| *sym);
-        let cudnnGetRNNParamsSize = __library.get(b"cudnnGetRNNParamsSize\0").map(|sym| *sym);
         let cudnnGetRNNWeightSpaceSize = __library
             .get(b"cudnnGetRNNWeightSpaceSize\0")
             .map(|sym| *sym);
-        let cudnnGetRNNLinLayerMatrixParams = __library
-            .get(b"cudnnGetRNNLinLayerMatrixParams\0")
-            .map(|sym| *sym);
-        let cudnnGetRNNLinLayerBiasParams = __library
-            .get(b"cudnnGetRNNLinLayerBiasParams\0")
-            .map(|sym| *sym);
         let cudnnGetRNNWeightParams = __library.get(b"cudnnGetRNNWeightParams\0").map(|sym| *sym);
-        let cudnnRNNForwardInference = __library.get(b"cudnnRNNForwardInference\0").map(|sym| *sym);
-        let cudnnSetRNNPaddingMode = __library.get(b"cudnnSetRNNPaddingMode\0").map(|sym| *sym);
-        let cudnnGetRNNPaddingMode = __library.get(b"cudnnGetRNNPaddingMode\0").map(|sym| *sym);
         let cudnnCreateRNNDataDescriptor = __library
             .get(b"cudnnCreateRNNDataDescriptor\0")
             .map(|sym| *sym);
@@ -4875,19 +4400,7 @@ impl Lib {
         let cudnnGetRNNDataDescriptor = __library
             .get(b"cudnnGetRNNDataDescriptor\0")
             .map(|sym| *sym);
-        let cudnnRNNForwardInferenceEx = __library
-            .get(b"cudnnRNNForwardInferenceEx\0")
-            .map(|sym| *sym);
         let cudnnRNNForward = __library.get(b"cudnnRNNForward\0").map(|sym| *sym);
-        let cudnnSetRNNAlgorithmDescriptor = __library
-            .get(b"cudnnSetRNNAlgorithmDescriptor\0")
-            .map(|sym| *sym);
-        let cudnnGetRNNForwardInferenceAlgorithmMaxCount = __library
-            .get(b"cudnnGetRNNForwardInferenceAlgorithmMaxCount\0")
-            .map(|sym| *sym);
-        let cudnnFindRNNForwardInferenceAlgorithmEx = __library
-            .get(b"cudnnFindRNNForwardInferenceAlgorithmEx\0")
-            .map(|sym| *sym);
         let cudnnCreateSeqDataDescriptor = __library
             .get(b"cudnnCreateSeqDataDescriptor\0")
             .map(|sym| *sym);
@@ -4917,40 +4430,10 @@ impl Lib {
         let cudnnMultiHeadAttnForward = __library
             .get(b"cudnnMultiHeadAttnForward\0")
             .map(|sym| *sym);
-        let cudnnAdvInferVersionCheck = __library
-            .get(b"cudnnAdvInferVersionCheck\0")
-            .map(|sym| *sym);
-        let cudnnRNNForwardTraining = __library.get(b"cudnnRNNForwardTraining\0").map(|sym| *sym);
-        let cudnnRNNBackwardData = __library.get(b"cudnnRNNBackwardData\0").map(|sym| *sym);
+        let cudnnAdvVersionCheck = __library.get(b"cudnnAdvVersionCheck\0").map(|sym| *sym);
         let cudnnRNNBackwardData_v8 = __library.get(b"cudnnRNNBackwardData_v8\0").map(|sym| *sym);
-        let cudnnRNNBackwardWeights = __library.get(b"cudnnRNNBackwardWeights\0").map(|sym| *sym);
         let cudnnRNNBackwardWeights_v8 = __library
             .get(b"cudnnRNNBackwardWeights_v8\0")
-            .map(|sym| *sym);
-        let cudnnRNNForwardTrainingEx = __library
-            .get(b"cudnnRNNForwardTrainingEx\0")
-            .map(|sym| *sym);
-        let cudnnRNNBackwardDataEx = __library.get(b"cudnnRNNBackwardDataEx\0").map(|sym| *sym);
-        let cudnnRNNBackwardWeightsEx = __library
-            .get(b"cudnnRNNBackwardWeightsEx\0")
-            .map(|sym| *sym);
-        let cudnnGetRNNForwardTrainingAlgorithmMaxCount = __library
-            .get(b"cudnnGetRNNForwardTrainingAlgorithmMaxCount\0")
-            .map(|sym| *sym);
-        let cudnnFindRNNForwardTrainingAlgorithmEx = __library
-            .get(b"cudnnFindRNNForwardTrainingAlgorithmEx\0")
-            .map(|sym| *sym);
-        let cudnnGetRNNBackwardDataAlgorithmMaxCount = __library
-            .get(b"cudnnGetRNNBackwardDataAlgorithmMaxCount\0")
-            .map(|sym| *sym);
-        let cudnnFindRNNBackwardDataAlgorithmEx = __library
-            .get(b"cudnnFindRNNBackwardDataAlgorithmEx\0")
-            .map(|sym| *sym);
-        let cudnnGetRNNBackwardWeightsAlgorithmMaxCount = __library
-            .get(b"cudnnGetRNNBackwardWeightsAlgorithmMaxCount\0")
-            .map(|sym| *sym);
-        let cudnnFindRNNBackwardWeightsAlgorithmEx = __library
-            .get(b"cudnnFindRNNBackwardWeightsAlgorithmEx\0")
             .map(|sym| *sym);
         let cudnnMultiHeadAttnBackwardData = __library
             .get(b"cudnnMultiHeadAttnBackwardData\0")
@@ -4970,6 +4453,9 @@ impl Lib {
         let cudnnSetCTCLossDescriptor_v8 = __library
             .get(b"cudnnSetCTCLossDescriptor_v8\0")
             .map(|sym| *sym);
+        let cudnnSetCTCLossDescriptor_v9 = __library
+            .get(b"cudnnSetCTCLossDescriptor_v9\0")
+            .map(|sym| *sym);
         let cudnnGetCTCLossDescriptor = __library
             .get(b"cudnnGetCTCLossDescriptor\0")
             .map(|sym| *sym);
@@ -4978,6 +4464,9 @@ impl Lib {
             .map(|sym| *sym);
         let cudnnGetCTCLossDescriptor_v8 = __library
             .get(b"cudnnGetCTCLossDescriptor_v8\0")
+            .map(|sym| *sym);
+        let cudnnGetCTCLossDescriptor_v9 = __library
+            .get(b"cudnnGetCTCLossDescriptor_v9\0")
             .map(|sym| *sym);
         let cudnnDestroyCTCLossDescriptor = __library
             .get(b"cudnnDestroyCTCLossDescriptor\0")
@@ -4989,9 +4478,6 @@ impl Lib {
             .map(|sym| *sym);
         let cudnnGetCTCLossWorkspaceSize_v8 = __library
             .get(b"cudnnGetCTCLossWorkspaceSize_v8\0")
-            .map(|sym| *sym);
-        let cudnnAdvTrainVersionCheck = __library
-            .get(b"cudnnAdvTrainVersionCheck\0")
             .map(|sym| *sym);
         let cudnnCreateConvolutionDescriptor = __library
             .get(b"cudnnCreateConvolutionDescriptor\0")
@@ -5079,9 +4565,7 @@ impl Lib {
         let cudnnGetFoldedConvBackwardDataDescriptors = __library
             .get(b"cudnnGetFoldedConvBackwardDataDescriptors\0")
             .map(|sym| *sym);
-        let cudnnCnnInferVersionCheck = __library
-            .get(b"cudnnCnnInferVersionCheck\0")
-            .map(|sym| *sym);
+        let cudnnCnnVersionCheck = __library.get(b"cudnnCnnVersionCheck\0").map(|sym| *sym);
         let cudnnGetConvolutionBackwardFilterAlgorithmMaxCount = __library
             .get(b"cudnnGetConvolutionBackwardFilterAlgorithmMaxCount\0")
             .map(|sym| *sym);
@@ -5131,31 +4615,31 @@ impl Lib {
         let cudnnDestroyFusedOpsPlan = __library.get(b"cudnnDestroyFusedOpsPlan\0").map(|sym| *sym);
         let cudnnMakeFusedOpsPlan = __library.get(b"cudnnMakeFusedOpsPlan\0").map(|sym| *sym);
         let cudnnFusedOpsExecute = __library.get(b"cudnnFusedOpsExecute\0").map(|sym| *sym);
-        let cudnnCnnTrainVersionCheck = __library
-            .get(b"cudnnCnnTrainVersionCheck\0")
-            .map(|sym| *sym);
-        let cudnnBackendCreateDescriptor = __library
-            .get(b"cudnnBackendCreateDescriptor\0")
-            .map(|sym| *sym);
-        let cudnnBackendDestroyDescriptor = __library
-            .get(b"cudnnBackendDestroyDescriptor\0")
-            .map(|sym| *sym);
-        let cudnnBackendInitialize = __library.get(b"cudnnBackendInitialize\0").map(|sym| *sym);
-        let cudnnBackendFinalize = __library.get(b"cudnnBackendFinalize\0").map(|sym| *sym);
-        let cudnnBackendSetAttribute = __library.get(b"cudnnBackendSetAttribute\0").map(|sym| *sym);
-        let cudnnBackendGetAttribute = __library.get(b"cudnnBackendGetAttribute\0").map(|sym| *sym);
-        let cudnnBackendExecute = __library.get(b"cudnnBackendExecute\0").map(|sym| *sym);
         Ok(Lib {
             __library,
             cudnnGetVersion,
+            cudnnGetMaxDeviceVersion,
             cudnnGetCudartVersion,
             cudnnGetErrorString,
+            cudnnGetLastErrorString,
             cudnnQueryRuntimeError,
             cudnnGetProperty,
             cudnnCreate,
             cudnnDestroy,
             cudnnSetStream,
             cudnnGetStream,
+            cudnnSetCallback,
+            cudnnGetCallback,
+            cudnnGraphVersionCheck,
+            cudnnBackendCreateDescriptor,
+            cudnnBackendDestroyDescriptor,
+            cudnnBackendInitialize,
+            cudnnBackendFinalize,
+            cudnnBackendSetAttribute,
+            cudnnBackendGetAttribute,
+            cudnnBackendExecute,
+            cudnnBackendPopulateCudaGraph,
+            cudnnBackendUpdateCudaGraph,
             cudnnCreateTensorDescriptor,
             cudnnSetTensor4dDescriptor,
             cudnnSetTensor4dDescriptorEx,
@@ -5235,21 +4719,7 @@ impl Lib {
             cudnnRestoreDropoutDescriptor,
             cudnnGetDropoutDescriptor,
             cudnnDropoutForward,
-            cudnnCreateAlgorithmDescriptor,
-            cudnnSetAlgorithmDescriptor,
-            cudnnGetAlgorithmDescriptor,
-            cudnnCopyAlgorithmDescriptor,
-            cudnnDestroyAlgorithmDescriptor,
-            cudnnCreateAlgorithmPerformance,
-            cudnnSetAlgorithmPerformance,
-            cudnnGetAlgorithmPerformance,
-            cudnnDestroyAlgorithmPerformance,
-            cudnnGetAlgorithmSpaceSize,
-            cudnnSaveAlgorithm,
-            cudnnRestoreAlgorithm,
-            cudnnSetCallback,
-            cudnnGetCallback,
-            cudnnOpsInferVersionCheck,
+            cudnnOpsVersionCheck,
             cudnnSoftmaxBackward,
             cudnnPoolingBackward,
             cudnnActivationBackward,
@@ -5270,47 +4740,23 @@ impl Lib {
             cudnnSpatialTfGridGeneratorBackward,
             cudnnSpatialTfSamplerBackward,
             cudnnDropoutBackward,
-            cudnnOpsTrainVersionCheck,
             cudnnCreateRNNDescriptor,
             cudnnDestroyRNNDescriptor,
             cudnnSetRNNDescriptor_v8,
             cudnnGetRNNDescriptor_v8,
-            cudnnSetRNNDescriptor_v6,
-            cudnnGetRNNDescriptor_v6,
-            cudnnSetRNNMatrixMathType,
-            cudnnGetRNNMatrixMathType,
-            cudnnSetRNNBiasMode,
-            cudnnGetRNNBiasMode,
             cudnnRNNSetClip_v8,
+            cudnnRNNSetClip_v9,
             cudnnRNNGetClip_v8,
-            cudnnRNNSetClip,
-            cudnnRNNGetClip,
-            cudnnSetRNNProjectionLayers,
-            cudnnGetRNNProjectionLayers,
-            cudnnCreatePersistentRNNPlan,
-            cudnnDestroyPersistentRNNPlan,
-            cudnnSetPersistentRNNPlan,
+            cudnnRNNGetClip_v9,
             cudnnBuildRNNDynamic,
-            cudnnGetRNNWorkspaceSize,
-            cudnnGetRNNTrainingReserveSize,
             cudnnGetRNNTempSpaceSizes,
-            cudnnGetRNNParamsSize,
             cudnnGetRNNWeightSpaceSize,
-            cudnnGetRNNLinLayerMatrixParams,
-            cudnnGetRNNLinLayerBiasParams,
             cudnnGetRNNWeightParams,
-            cudnnRNNForwardInference,
-            cudnnSetRNNPaddingMode,
-            cudnnGetRNNPaddingMode,
             cudnnCreateRNNDataDescriptor,
             cudnnDestroyRNNDataDescriptor,
             cudnnSetRNNDataDescriptor,
             cudnnGetRNNDataDescriptor,
-            cudnnRNNForwardInferenceEx,
             cudnnRNNForward,
-            cudnnSetRNNAlgorithmDescriptor,
-            cudnnGetRNNForwardInferenceAlgorithmMaxCount,
-            cudnnFindRNNForwardInferenceAlgorithmEx,
             cudnnCreateSeqDataDescriptor,
             cudnnDestroySeqDataDescriptor,
             cudnnSetSeqDataDescriptor,
@@ -5322,36 +4768,25 @@ impl Lib {
             cudnnGetMultiHeadAttnBuffers,
             cudnnGetMultiHeadAttnWeights,
             cudnnMultiHeadAttnForward,
-            cudnnAdvInferVersionCheck,
-            cudnnRNNForwardTraining,
-            cudnnRNNBackwardData,
+            cudnnAdvVersionCheck,
             cudnnRNNBackwardData_v8,
-            cudnnRNNBackwardWeights,
             cudnnRNNBackwardWeights_v8,
-            cudnnRNNForwardTrainingEx,
-            cudnnRNNBackwardDataEx,
-            cudnnRNNBackwardWeightsEx,
-            cudnnGetRNNForwardTrainingAlgorithmMaxCount,
-            cudnnFindRNNForwardTrainingAlgorithmEx,
-            cudnnGetRNNBackwardDataAlgorithmMaxCount,
-            cudnnFindRNNBackwardDataAlgorithmEx,
-            cudnnGetRNNBackwardWeightsAlgorithmMaxCount,
-            cudnnFindRNNBackwardWeightsAlgorithmEx,
             cudnnMultiHeadAttnBackwardData,
             cudnnMultiHeadAttnBackwardWeights,
             cudnnCreateCTCLossDescriptor,
             cudnnSetCTCLossDescriptor,
             cudnnSetCTCLossDescriptorEx,
             cudnnSetCTCLossDescriptor_v8,
+            cudnnSetCTCLossDescriptor_v9,
             cudnnGetCTCLossDescriptor,
             cudnnGetCTCLossDescriptorEx,
             cudnnGetCTCLossDescriptor_v8,
+            cudnnGetCTCLossDescriptor_v9,
             cudnnDestroyCTCLossDescriptor,
             cudnnCTCLoss,
             cudnnCTCLoss_v8,
             cudnnGetCTCLossWorkspaceSize,
             cudnnGetCTCLossWorkspaceSize_v8,
-            cudnnAdvTrainVersionCheck,
             cudnnCreateConvolutionDescriptor,
             cudnnDestroyConvolutionDescriptor,
             cudnnSetConvolutionMathType,
@@ -5382,7 +4817,7 @@ impl Lib {
             cudnnGetConvolutionBackwardDataWorkspaceSize,
             cudnnConvolutionBackwardData,
             cudnnGetFoldedConvBackwardDataDescriptors,
-            cudnnCnnInferVersionCheck,
+            cudnnCnnVersionCheck,
             cudnnGetConvolutionBackwardFilterAlgorithmMaxCount,
             cudnnFindConvolutionBackwardFilterAlgorithm,
             cudnnFindConvolutionBackwardFilterAlgorithmEx,
@@ -5402,19 +4837,17 @@ impl Lib {
             cudnnDestroyFusedOpsPlan,
             cudnnMakeFusedOpsPlan,
             cudnnFusedOpsExecute,
-            cudnnCnnTrainVersionCheck,
-            cudnnBackendCreateDescriptor,
-            cudnnBackendDestroyDescriptor,
-            cudnnBackendInitialize,
-            cudnnBackendFinalize,
-            cudnnBackendSetAttribute,
-            cudnnBackendGetAttribute,
-            cudnnBackendExecute,
         })
     }
     pub unsafe fn cudnnGetVersion(&self) -> usize {
         (self
             .cudnnGetVersion
+            .as_ref()
+            .expect("Expected function, got error."))()
+    }
+    pub unsafe fn cudnnGetMaxDeviceVersion(&self) -> usize {
+        (self
+            .cudnnGetMaxDeviceVersion
             .as_ref()
             .expect("Expected function, got error."))()
     }
@@ -5429,6 +4862,16 @@ impl Lib {
             .cudnnGetErrorString
             .as_ref()
             .expect("Expected function, got error."))(status)
+    }
+    pub unsafe fn cudnnGetLastErrorString(
+        &self,
+        message: *mut ::core::ffi::c_char,
+        max_size: usize,
+    ) {
+        (self
+            .cudnnGetLastErrorString
+            .as_ref()
+            .expect("Expected function, got error."))(message, max_size)
     }
     pub unsafe fn cudnnQueryRuntimeError(
         &self,
@@ -5483,6 +4926,150 @@ impl Lib {
             .cudnnGetStream
             .as_ref()
             .expect("Expected function, got error."))(handle, streamId)
+    }
+    pub unsafe fn cudnnSetCallback(
+        &self,
+        mask: ::core::ffi::c_uint,
+        udata: *mut ::core::ffi::c_void,
+        fptr: cudnnCallback_t,
+    ) -> cudnnStatus_t {
+        (self
+            .cudnnSetCallback
+            .as_ref()
+            .expect("Expected function, got error."))(mask, udata, fptr)
+    }
+    pub unsafe fn cudnnGetCallback(
+        &self,
+        mask: *mut ::core::ffi::c_uint,
+        udata: *mut *mut ::core::ffi::c_void,
+        fptr: *mut cudnnCallback_t,
+    ) -> cudnnStatus_t {
+        (self
+            .cudnnGetCallback
+            .as_ref()
+            .expect("Expected function, got error."))(mask, udata, fptr)
+    }
+    pub unsafe fn cudnnGraphVersionCheck(&self) -> cudnnStatus_t {
+        (self
+            .cudnnGraphVersionCheck
+            .as_ref()
+            .expect("Expected function, got error."))()
+    }
+    pub unsafe fn cudnnBackendCreateDescriptor(
+        &self,
+        descriptorType: cudnnBackendDescriptorType_t,
+        descriptor: *mut cudnnBackendDescriptor_t,
+    ) -> cudnnStatus_t {
+        (self
+            .cudnnBackendCreateDescriptor
+            .as_ref()
+            .expect("Expected function, got error."))(descriptorType, descriptor)
+    }
+    pub unsafe fn cudnnBackendDestroyDescriptor(
+        &self,
+        descriptor: cudnnBackendDescriptor_t,
+    ) -> cudnnStatus_t {
+        (self
+            .cudnnBackendDestroyDescriptor
+            .as_ref()
+            .expect("Expected function, got error."))(descriptor)
+    }
+    pub unsafe fn cudnnBackendInitialize(
+        &self,
+        descriptor: cudnnBackendDescriptor_t,
+    ) -> cudnnStatus_t {
+        (self
+            .cudnnBackendInitialize
+            .as_ref()
+            .expect("Expected function, got error."))(descriptor)
+    }
+    pub unsafe fn cudnnBackendFinalize(
+        &self,
+        descriptor: cudnnBackendDescriptor_t,
+    ) -> cudnnStatus_t {
+        (self
+            .cudnnBackendFinalize
+            .as_ref()
+            .expect("Expected function, got error."))(descriptor)
+    }
+    pub unsafe fn cudnnBackendSetAttribute(
+        &self,
+        descriptor: cudnnBackendDescriptor_t,
+        attributeName: cudnnBackendAttributeName_t,
+        attributeType: cudnnBackendAttributeType_t,
+        elementCount: i64,
+        arrayOfElements: *const ::core::ffi::c_void,
+    ) -> cudnnStatus_t {
+        (self
+            .cudnnBackendSetAttribute
+            .as_ref()
+            .expect("Expected function, got error."))(
+            descriptor,
+            attributeName,
+            attributeType,
+            elementCount,
+            arrayOfElements,
+        )
+    }
+    pub unsafe fn cudnnBackendGetAttribute(
+        &self,
+        descriptor: cudnnBackendDescriptor_t,
+        attributeName: cudnnBackendAttributeName_t,
+        attributeType: cudnnBackendAttributeType_t,
+        requestedElementCount: i64,
+        elementCount: *mut i64,
+        arrayOfElements: *mut ::core::ffi::c_void,
+    ) -> cudnnStatus_t {
+        (self
+            .cudnnBackendGetAttribute
+            .as_ref()
+            .expect("Expected function, got error."))(
+            descriptor,
+            attributeName,
+            attributeType,
+            requestedElementCount,
+            elementCount,
+            arrayOfElements,
+        )
+    }
+    pub unsafe fn cudnnBackendExecute(
+        &self,
+        handle: cudnnHandle_t,
+        executionPlan: cudnnBackendDescriptor_t,
+        variantPack: cudnnBackendDescriptor_t,
+    ) -> cudnnStatus_t {
+        (self
+            .cudnnBackendExecute
+            .as_ref()
+            .expect("Expected function, got error."))(handle, executionPlan, variantPack)
+    }
+    pub unsafe fn cudnnBackendPopulateCudaGraph(
+        &self,
+        handle: cudnnHandle_t,
+        executionPlan: cudnnBackendDescriptor_t,
+        variantPack: cudnnBackendDescriptor_t,
+        graph: cudaGraph_t,
+    ) -> cudnnStatus_t {
+        (self
+            .cudnnBackendPopulateCudaGraph
+            .as_ref()
+            .expect("Expected function, got error."))(
+            handle, executionPlan, variantPack, graph
+        )
+    }
+    pub unsafe fn cudnnBackendUpdateCudaGraph(
+        &self,
+        handle: cudnnHandle_t,
+        executionPlan: cudnnBackendDescriptor_t,
+        variantPack: cudnnBackendDescriptor_t,
+        graph: cudaGraph_t,
+    ) -> cudnnStatus_t {
+        (self
+            .cudnnBackendUpdateCudaGraph
+            .as_ref()
+            .expect("Expected function, got error."))(
+            handle, executionPlan, variantPack, graph
+        )
     }
     pub unsafe fn cudnnCreateTensorDescriptor(
         &self,
@@ -6779,174 +6366,9 @@ impl Lib {
             reserveSpaceSizeInBytes,
         )
     }
-    pub unsafe fn cudnnCreateAlgorithmDescriptor(
-        &self,
-        algoDesc: *mut cudnnAlgorithmDescriptor_t,
-    ) -> cudnnStatus_t {
+    pub unsafe fn cudnnOpsVersionCheck(&self) -> cudnnStatus_t {
         (self
-            .cudnnCreateAlgorithmDescriptor
-            .as_ref()
-            .expect("Expected function, got error."))(algoDesc)
-    }
-    pub unsafe fn cudnnSetAlgorithmDescriptor(
-        &self,
-        algoDesc: cudnnAlgorithmDescriptor_t,
-        algorithm: cudnnAlgorithm_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnSetAlgorithmDescriptor
-            .as_ref()
-            .expect("Expected function, got error."))(algoDesc, algorithm)
-    }
-    pub unsafe fn cudnnGetAlgorithmDescriptor(
-        &self,
-        algoDesc: cudnnAlgorithmDescriptor_t,
-        algorithm: *mut cudnnAlgorithm_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnGetAlgorithmDescriptor
-            .as_ref()
-            .expect("Expected function, got error."))(algoDesc, algorithm)
-    }
-    pub unsafe fn cudnnCopyAlgorithmDescriptor(
-        &self,
-        src: cudnnAlgorithmDescriptor_t,
-        dest: cudnnAlgorithmDescriptor_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnCopyAlgorithmDescriptor
-            .as_ref()
-            .expect("Expected function, got error."))(src, dest)
-    }
-    pub unsafe fn cudnnDestroyAlgorithmDescriptor(
-        &self,
-        algoDesc: cudnnAlgorithmDescriptor_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnDestroyAlgorithmDescriptor
-            .as_ref()
-            .expect("Expected function, got error."))(algoDesc)
-    }
-    pub unsafe fn cudnnCreateAlgorithmPerformance(
-        &self,
-        algoPerf: *mut cudnnAlgorithmPerformance_t,
-        numberToCreate: ::core::ffi::c_int,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnCreateAlgorithmPerformance
-            .as_ref()
-            .expect("Expected function, got error."))(algoPerf, numberToCreate)
-    }
-    pub unsafe fn cudnnSetAlgorithmPerformance(
-        &self,
-        algoPerf: cudnnAlgorithmPerformance_t,
-        algoDesc: cudnnAlgorithmDescriptor_t,
-        status: cudnnStatus_t,
-        time: f32,
-        memory: usize,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnSetAlgorithmPerformance
-            .as_ref()
-            .expect("Expected function, got error."))(
-            algoPerf, algoDesc, status, time, memory
-        )
-    }
-    pub unsafe fn cudnnGetAlgorithmPerformance(
-        &self,
-        algoPerf: cudnnAlgorithmPerformance_t,
-        algoDesc: *mut cudnnAlgorithmDescriptor_t,
-        status: *mut cudnnStatus_t,
-        time: *mut f32,
-        memory: *mut usize,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnGetAlgorithmPerformance
-            .as_ref()
-            .expect("Expected function, got error."))(
-            algoPerf, algoDesc, status, time, memory
-        )
-    }
-    pub unsafe fn cudnnDestroyAlgorithmPerformance(
-        &self,
-        algoPerf: *mut cudnnAlgorithmPerformance_t,
-        numberToDestroy: ::core::ffi::c_int,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnDestroyAlgorithmPerformance
-            .as_ref()
-            .expect("Expected function, got error."))(algoPerf, numberToDestroy)
-    }
-    pub unsafe fn cudnnGetAlgorithmSpaceSize(
-        &self,
-        handle: cudnnHandle_t,
-        algoDesc: cudnnAlgorithmDescriptor_t,
-        algoSpaceSizeInBytes: *mut usize,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnGetAlgorithmSpaceSize
-            .as_ref()
-            .expect("Expected function, got error."))(handle, algoDesc, algoSpaceSizeInBytes)
-    }
-    pub unsafe fn cudnnSaveAlgorithm(
-        &self,
-        handle: cudnnHandle_t,
-        algoDesc: cudnnAlgorithmDescriptor_t,
-        algoSpace: *mut ::core::ffi::c_void,
-        algoSpaceSizeInBytes: usize,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnSaveAlgorithm
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            algoDesc,
-            algoSpace,
-            algoSpaceSizeInBytes,
-        )
-    }
-    pub unsafe fn cudnnRestoreAlgorithm(
-        &self,
-        handle: cudnnHandle_t,
-        algoSpace: *mut ::core::ffi::c_void,
-        algoSpaceSizeInBytes: usize,
-        algoDesc: cudnnAlgorithmDescriptor_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnRestoreAlgorithm
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            algoSpace,
-            algoSpaceSizeInBytes,
-            algoDesc,
-        )
-    }
-    pub unsafe fn cudnnSetCallback(
-        &self,
-        mask: ::core::ffi::c_uint,
-        udata: *mut ::core::ffi::c_void,
-        fptr: cudnnCallback_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnSetCallback
-            .as_ref()
-            .expect("Expected function, got error."))(mask, udata, fptr)
-    }
-    pub unsafe fn cudnnGetCallback(
-        &self,
-        mask: *mut ::core::ffi::c_uint,
-        udata: *mut *mut ::core::ffi::c_void,
-        fptr: *mut cudnnCallback_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnGetCallback
-            .as_ref()
-            .expect("Expected function, got error."))(mask, udata, fptr)
-    }
-    pub unsafe fn cudnnOpsInferVersionCheck(&self) -> cudnnStatus_t {
-        (self
-            .cudnnOpsInferVersionCheck
+            .cudnnOpsVersionCheck
             .as_ref()
             .expect("Expected function, got error."))()
     }
@@ -7691,12 +7113,6 @@ impl Lib {
             reserveSpaceSizeInBytes,
         )
     }
-    pub unsafe fn cudnnOpsTrainVersionCheck(&self) -> cudnnStatus_t {
-        (self
-            .cudnnOpsTrainVersionCheck
-            .as_ref()
-            .expect("Expected function, got error."))()
-    }
     pub unsafe fn cudnnCreateRNNDescriptor(
         &self,
         rnnDesc: *mut cudnnRNNDescriptor_t,
@@ -7790,104 +7206,6 @@ impl Lib {
             auxFlags,
         )
     }
-    pub unsafe fn cudnnSetRNNDescriptor_v6(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        hiddenSize: ::core::ffi::c_int,
-        numLayers: ::core::ffi::c_int,
-        dropoutDesc: cudnnDropoutDescriptor_t,
-        inputMode: cudnnRNNInputMode_t,
-        direction: cudnnDirectionMode_t,
-        cellMode: cudnnRNNMode_t,
-        algo: cudnnRNNAlgo_t,
-        mathPrec: cudnnDataType_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnSetRNNDescriptor_v6
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            rnnDesc,
-            hiddenSize,
-            numLayers,
-            dropoutDesc,
-            inputMode,
-            direction,
-            cellMode,
-            algo,
-            mathPrec,
-        )
-    }
-    pub unsafe fn cudnnGetRNNDescriptor_v6(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        hiddenSize: *mut ::core::ffi::c_int,
-        numLayers: *mut ::core::ffi::c_int,
-        dropoutDesc: *mut cudnnDropoutDescriptor_t,
-        inputMode: *mut cudnnRNNInputMode_t,
-        direction: *mut cudnnDirectionMode_t,
-        cellMode: *mut cudnnRNNMode_t,
-        algo: *mut cudnnRNNAlgo_t,
-        mathPrec: *mut cudnnDataType_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnGetRNNDescriptor_v6
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            rnnDesc,
-            hiddenSize,
-            numLayers,
-            dropoutDesc,
-            inputMode,
-            direction,
-            cellMode,
-            algo,
-            mathPrec,
-        )
-    }
-    pub unsafe fn cudnnSetRNNMatrixMathType(
-        &self,
-        rnnDesc: cudnnRNNDescriptor_t,
-        mType: cudnnMathType_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnSetRNNMatrixMathType
-            .as_ref()
-            .expect("Expected function, got error."))(rnnDesc, mType)
-    }
-    pub unsafe fn cudnnGetRNNMatrixMathType(
-        &self,
-        rnnDesc: cudnnRNNDescriptor_t,
-        mType: *mut cudnnMathType_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnGetRNNMatrixMathType
-            .as_ref()
-            .expect("Expected function, got error."))(rnnDesc, mType)
-    }
-    pub unsafe fn cudnnSetRNNBiasMode(
-        &self,
-        rnnDesc: cudnnRNNDescriptor_t,
-        biasMode: cudnnRNNBiasMode_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnSetRNNBiasMode
-            .as_ref()
-            .expect("Expected function, got error."))(rnnDesc, biasMode)
-    }
-    pub unsafe fn cudnnGetRNNBiasMode(
-        &self,
-        rnnDesc: cudnnRNNDescriptor_t,
-        biasMode: *mut cudnnRNNBiasMode_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnGetRNNBiasMode
-            .as_ref()
-            .expect("Expected function, got error."))(rnnDesc, biasMode)
-    }
     pub unsafe fn cudnnRNNSetClip_v8(
         &self,
         rnnDesc: cudnnRNNDescriptor_t,
@@ -7902,6 +7220,18 @@ impl Lib {
             .expect("Expected function, got error."))(
             rnnDesc, clipMode, clipNanOpt, lclip, rclip
         )
+    }
+    pub unsafe fn cudnnRNNSetClip_v9(
+        &self,
+        rnnDesc: cudnnRNNDescriptor_t,
+        clipMode: cudnnRNNClipMode_t,
+        lclip: f64,
+        rclip: f64,
+    ) -> cudnnStatus_t {
+        (self
+            .cudnnRNNSetClip_v9
+            .as_ref()
+            .expect("Expected function, got error."))(rnnDesc, clipMode, lclip, rclip)
     }
     pub unsafe fn cudnnRNNGetClip_v8(
         &self,
@@ -7918,96 +7248,17 @@ impl Lib {
             rnnDesc, clipMode, clipNanOpt, lclip, rclip
         )
     }
-    pub unsafe fn cudnnRNNSetClip(
+    pub unsafe fn cudnnRNNGetClip_v9(
         &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        clipMode: cudnnRNNClipMode_t,
-        clipNanOpt: cudnnNanPropagation_t,
-        lclip: f64,
-        rclip: f64,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnRNNSetClip
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle, rnnDesc, clipMode, clipNanOpt, lclip, rclip,
-        )
-    }
-    pub unsafe fn cudnnRNNGetClip(
-        &self,
-        handle: cudnnHandle_t,
         rnnDesc: cudnnRNNDescriptor_t,
         clipMode: *mut cudnnRNNClipMode_t,
-        clipNanOpt: *mut cudnnNanPropagation_t,
         lclip: *mut f64,
         rclip: *mut f64,
     ) -> cudnnStatus_t {
         (self
-            .cudnnRNNGetClip
+            .cudnnRNNGetClip_v9
             .as_ref()
-            .expect("Expected function, got error."))(
-            handle, rnnDesc, clipMode, clipNanOpt, lclip, rclip,
-        )
-    }
-    pub unsafe fn cudnnSetRNNProjectionLayers(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        recProjSize: ::core::ffi::c_int,
-        outProjSize: ::core::ffi::c_int,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnSetRNNProjectionLayers
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle, rnnDesc, recProjSize, outProjSize
-        )
-    }
-    pub unsafe fn cudnnGetRNNProjectionLayers(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        recProjSize: *mut ::core::ffi::c_int,
-        outProjSize: *mut ::core::ffi::c_int,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnGetRNNProjectionLayers
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle, rnnDesc, recProjSize, outProjSize
-        )
-    }
-    pub unsafe fn cudnnCreatePersistentRNNPlan(
-        &self,
-        rnnDesc: cudnnRNNDescriptor_t,
-        minibatch: ::core::ffi::c_int,
-        dataType: cudnnDataType_t,
-        plan: *mut cudnnPersistentRNNPlan_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnCreatePersistentRNNPlan
-            .as_ref()
-            .expect("Expected function, got error."))(rnnDesc, minibatch, dataType, plan)
-    }
-    pub unsafe fn cudnnDestroyPersistentRNNPlan(
-        &self,
-        plan: cudnnPersistentRNNPlan_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnDestroyPersistentRNNPlan
-            .as_ref()
-            .expect("Expected function, got error."))(plan)
-    }
-    pub unsafe fn cudnnSetPersistentRNNPlan(
-        &self,
-        rnnDesc: cudnnRNNDescriptor_t,
-        plan: cudnnPersistentRNNPlan_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnSetPersistentRNNPlan
-            .as_ref()
-            .expect("Expected function, got error."))(rnnDesc, plan)
+            .expect("Expected function, got error."))(rnnDesc, clipMode, lclip, rclip)
     }
     pub unsafe fn cudnnBuildRNNDynamic(
         &self,
@@ -8020,49 +7271,11 @@ impl Lib {
             .as_ref()
             .expect("Expected function, got error."))(handle, rnnDesc, miniBatch)
     }
-    pub unsafe fn cudnnGetRNNWorkspaceSize(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        seqLength: ::core::ffi::c_int,
-        xDesc: *const cudnnTensorDescriptor_t,
-        sizeInBytes: *mut usize,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnGetRNNWorkspaceSize
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            rnnDesc,
-            seqLength,
-            xDesc,
-            sizeInBytes,
-        )
-    }
-    pub unsafe fn cudnnGetRNNTrainingReserveSize(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        seqLength: ::core::ffi::c_int,
-        xDesc: *const cudnnTensorDescriptor_t,
-        sizeInBytes: *mut usize,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnGetRNNTrainingReserveSize
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            rnnDesc,
-            seqLength,
-            xDesc,
-            sizeInBytes,
-        )
-    }
     pub unsafe fn cudnnGetRNNTempSpaceSizes(
         &self,
         handle: cudnnHandle_t,
         rnnDesc: cudnnRNNDescriptor_t,
-        fMode: cudnnForwardMode_t,
+        fwdMode: cudnnForwardMode_t,
         xDesc: cudnnRNNDataDescriptor_t,
         workSpaceSize: *mut usize,
         reserveSpaceSize: *mut usize,
@@ -8073,25 +7286,10 @@ impl Lib {
             .expect("Expected function, got error."))(
             handle,
             rnnDesc,
-            fMode,
+            fwdMode,
             xDesc,
             workSpaceSize,
             reserveSpaceSize,
-        )
-    }
-    pub unsafe fn cudnnGetRNNParamsSize(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        xDesc: cudnnTensorDescriptor_t,
-        sizeInBytes: *mut usize,
-        dataType: cudnnDataType_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnGetRNNParamsSize
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle, rnnDesc, xDesc, sizeInBytes, dataType
         )
     }
     pub unsafe fn cudnnGetRNNWeightSpaceSize(
@@ -8104,60 +7302,6 @@ impl Lib {
             .cudnnGetRNNWeightSpaceSize
             .as_ref()
             .expect("Expected function, got error."))(handle, rnnDesc, weightSpaceSize)
-    }
-    pub unsafe fn cudnnGetRNNLinLayerMatrixParams(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        pseudoLayer: ::core::ffi::c_int,
-        xDesc: cudnnTensorDescriptor_t,
-        wDesc: cudnnFilterDescriptor_t,
-        w: *const ::core::ffi::c_void,
-        linLayerID: ::core::ffi::c_int,
-        linLayerMatDesc: cudnnFilterDescriptor_t,
-        linLayerMat: *mut *mut ::core::ffi::c_void,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnGetRNNLinLayerMatrixParams
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            rnnDesc,
-            pseudoLayer,
-            xDesc,
-            wDesc,
-            w,
-            linLayerID,
-            linLayerMatDesc,
-            linLayerMat,
-        )
-    }
-    pub unsafe fn cudnnGetRNNLinLayerBiasParams(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        pseudoLayer: ::core::ffi::c_int,
-        xDesc: cudnnTensorDescriptor_t,
-        wDesc: cudnnFilterDescriptor_t,
-        w: *const ::core::ffi::c_void,
-        linLayerID: ::core::ffi::c_int,
-        linLayerBiasDesc: cudnnFilterDescriptor_t,
-        linLayerBias: *mut *mut ::core::ffi::c_void,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnGetRNNLinLayerBiasParams
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            rnnDesc,
-            pseudoLayer,
-            xDesc,
-            wDesc,
-            w,
-            linLayerID,
-            linLayerBiasDesc,
-            linLayerBias,
-        )
     }
     pub unsafe fn cudnnGetRNNWeightParams(
         &self,
@@ -8187,73 +7331,6 @@ impl Lib {
             bDesc,
             bAddr,
         )
-    }
-    pub unsafe fn cudnnRNNForwardInference(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        seqLength: ::core::ffi::c_int,
-        xDesc: *const cudnnTensorDescriptor_t,
-        x: *const ::core::ffi::c_void,
-        hxDesc: cudnnTensorDescriptor_t,
-        hx: *const ::core::ffi::c_void,
-        cxDesc: cudnnTensorDescriptor_t,
-        cx: *const ::core::ffi::c_void,
-        wDesc: cudnnFilterDescriptor_t,
-        w: *const ::core::ffi::c_void,
-        yDesc: *const cudnnTensorDescriptor_t,
-        y: *mut ::core::ffi::c_void,
-        hyDesc: cudnnTensorDescriptor_t,
-        hy: *mut ::core::ffi::c_void,
-        cyDesc: cudnnTensorDescriptor_t,
-        cy: *mut ::core::ffi::c_void,
-        workSpace: *mut ::core::ffi::c_void,
-        workSpaceSizeInBytes: usize,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnRNNForwardInference
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            rnnDesc,
-            seqLength,
-            xDesc,
-            x,
-            hxDesc,
-            hx,
-            cxDesc,
-            cx,
-            wDesc,
-            w,
-            yDesc,
-            y,
-            hyDesc,
-            hy,
-            cyDesc,
-            cy,
-            workSpace,
-            workSpaceSizeInBytes,
-        )
-    }
-    pub unsafe fn cudnnSetRNNPaddingMode(
-        &self,
-        rnnDesc: cudnnRNNDescriptor_t,
-        paddingMode: ::core::ffi::c_uint,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnSetRNNPaddingMode
-            .as_ref()
-            .expect("Expected function, got error."))(rnnDesc, paddingMode)
-    }
-    pub unsafe fn cudnnGetRNNPaddingMode(
-        &self,
-        rnnDesc: cudnnRNNDescriptor_t,
-        paddingMode: *mut ::core::ffi::c_uint,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnGetRNNPaddingMode
-            .as_ref()
-            .expect("Expected function, got error."))(rnnDesc, paddingMode)
     }
     pub unsafe fn cudnnCreateRNNDataDescriptor(
         &self,
@@ -8325,67 +7402,6 @@ impl Lib {
             paddingFill,
         )
     }
-    pub unsafe fn cudnnRNNForwardInferenceEx(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        xDesc: cudnnRNNDataDescriptor_t,
-        x: *const ::core::ffi::c_void,
-        hxDesc: cudnnTensorDescriptor_t,
-        hx: *const ::core::ffi::c_void,
-        cxDesc: cudnnTensorDescriptor_t,
-        cx: *const ::core::ffi::c_void,
-        wDesc: cudnnFilterDescriptor_t,
-        w: *const ::core::ffi::c_void,
-        yDesc: cudnnRNNDataDescriptor_t,
-        y: *mut ::core::ffi::c_void,
-        hyDesc: cudnnTensorDescriptor_t,
-        hy: *mut ::core::ffi::c_void,
-        cyDesc: cudnnTensorDescriptor_t,
-        cy: *mut ::core::ffi::c_void,
-        kDesc: cudnnRNNDataDescriptor_t,
-        keys: *const ::core::ffi::c_void,
-        cDesc: cudnnRNNDataDescriptor_t,
-        cAttn: *mut ::core::ffi::c_void,
-        iDesc: cudnnRNNDataDescriptor_t,
-        iAttn: *mut ::core::ffi::c_void,
-        qDesc: cudnnRNNDataDescriptor_t,
-        queries: *mut ::core::ffi::c_void,
-        workSpace: *mut ::core::ffi::c_void,
-        workSpaceSizeInBytes: usize,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnRNNForwardInferenceEx
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            rnnDesc,
-            xDesc,
-            x,
-            hxDesc,
-            hx,
-            cxDesc,
-            cx,
-            wDesc,
-            w,
-            yDesc,
-            y,
-            hyDesc,
-            hy,
-            cyDesc,
-            cy,
-            kDesc,
-            keys,
-            cDesc,
-            cAttn,
-            iDesc,
-            iAttn,
-            qDesc,
-            queries,
-            workSpace,
-            workSpaceSizeInBytes,
-        )
-    }
     pub unsafe fn cudnnRNNForward(
         &self,
         handle: cudnnHandle_t,
@@ -8433,83 +7449,6 @@ impl Lib {
             workSpace,
             reserveSpaceSize,
             reserveSpace,
-        )
-    }
-    pub unsafe fn cudnnSetRNNAlgorithmDescriptor(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        algoDesc: cudnnAlgorithmDescriptor_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnSetRNNAlgorithmDescriptor
-            .as_ref()
-            .expect("Expected function, got error."))(handle, rnnDesc, algoDesc)
-    }
-    pub unsafe fn cudnnGetRNNForwardInferenceAlgorithmMaxCount(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        count: *mut ::core::ffi::c_int,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnGetRNNForwardInferenceAlgorithmMaxCount
-            .as_ref()
-            .expect("Expected function, got error."))(handle, rnnDesc, count)
-    }
-    pub unsafe fn cudnnFindRNNForwardInferenceAlgorithmEx(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        seqLength: ::core::ffi::c_int,
-        xDesc: *const cudnnTensorDescriptor_t,
-        x: *const ::core::ffi::c_void,
-        hxDesc: cudnnTensorDescriptor_t,
-        hx: *const ::core::ffi::c_void,
-        cxDesc: cudnnTensorDescriptor_t,
-        cx: *const ::core::ffi::c_void,
-        wDesc: cudnnFilterDescriptor_t,
-        w: *const ::core::ffi::c_void,
-        yDesc: *const cudnnTensorDescriptor_t,
-        y: *mut ::core::ffi::c_void,
-        hyDesc: cudnnTensorDescriptor_t,
-        hy: *mut ::core::ffi::c_void,
-        cyDesc: cudnnTensorDescriptor_t,
-        cy: *mut ::core::ffi::c_void,
-        findIntensity: f32,
-        requestedAlgoCount: ::core::ffi::c_int,
-        returnedAlgoCount: *mut ::core::ffi::c_int,
-        perfResults: *mut cudnnAlgorithmPerformance_t,
-        workspace: *mut ::core::ffi::c_void,
-        workSpaceSizeInBytes: usize,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnFindRNNForwardInferenceAlgorithmEx
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            rnnDesc,
-            seqLength,
-            xDesc,
-            x,
-            hxDesc,
-            hx,
-            cxDesc,
-            cx,
-            wDesc,
-            w,
-            yDesc,
-            y,
-            hyDesc,
-            hy,
-            cyDesc,
-            cy,
-            findIntensity,
-            requestedAlgoCount,
-            returnedAlgoCount,
-            perfResults,
-            workspace,
-            workSpaceSizeInBytes,
         )
     }
     pub unsafe fn cudnnCreateSeqDataDescriptor(
@@ -8795,125 +7734,11 @@ impl Lib {
             reserveSpace,
         )
     }
-    pub unsafe fn cudnnAdvInferVersionCheck(&self) -> cudnnStatus_t {
+    pub unsafe fn cudnnAdvVersionCheck(&self) -> cudnnStatus_t {
         (self
-            .cudnnAdvInferVersionCheck
+            .cudnnAdvVersionCheck
             .as_ref()
             .expect("Expected function, got error."))()
-    }
-    pub unsafe fn cudnnRNNForwardTraining(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        seqLength: ::core::ffi::c_int,
-        xDesc: *const cudnnTensorDescriptor_t,
-        x: *const ::core::ffi::c_void,
-        hxDesc: cudnnTensorDescriptor_t,
-        hx: *const ::core::ffi::c_void,
-        cxDesc: cudnnTensorDescriptor_t,
-        cx: *const ::core::ffi::c_void,
-        wDesc: cudnnFilterDescriptor_t,
-        w: *const ::core::ffi::c_void,
-        yDesc: *const cudnnTensorDescriptor_t,
-        y: *mut ::core::ffi::c_void,
-        hyDesc: cudnnTensorDescriptor_t,
-        hy: *mut ::core::ffi::c_void,
-        cyDesc: cudnnTensorDescriptor_t,
-        cy: *mut ::core::ffi::c_void,
-        workSpace: *mut ::core::ffi::c_void,
-        workSpaceSizeInBytes: usize,
-        reserveSpace: *mut ::core::ffi::c_void,
-        reserveSpaceSizeInBytes: usize,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnRNNForwardTraining
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            rnnDesc,
-            seqLength,
-            xDesc,
-            x,
-            hxDesc,
-            hx,
-            cxDesc,
-            cx,
-            wDesc,
-            w,
-            yDesc,
-            y,
-            hyDesc,
-            hy,
-            cyDesc,
-            cy,
-            workSpace,
-            workSpaceSizeInBytes,
-            reserveSpace,
-            reserveSpaceSizeInBytes,
-        )
-    }
-    pub unsafe fn cudnnRNNBackwardData(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        seqLength: ::core::ffi::c_int,
-        yDesc: *const cudnnTensorDescriptor_t,
-        y: *const ::core::ffi::c_void,
-        dyDesc: *const cudnnTensorDescriptor_t,
-        dy: *const ::core::ffi::c_void,
-        dhyDesc: cudnnTensorDescriptor_t,
-        dhy: *const ::core::ffi::c_void,
-        dcyDesc: cudnnTensorDescriptor_t,
-        dcy: *const ::core::ffi::c_void,
-        wDesc: cudnnFilterDescriptor_t,
-        w: *const ::core::ffi::c_void,
-        hxDesc: cudnnTensorDescriptor_t,
-        hx: *const ::core::ffi::c_void,
-        cxDesc: cudnnTensorDescriptor_t,
-        cx: *const ::core::ffi::c_void,
-        dxDesc: *const cudnnTensorDescriptor_t,
-        dx: *mut ::core::ffi::c_void,
-        dhxDesc: cudnnTensorDescriptor_t,
-        dhx: *mut ::core::ffi::c_void,
-        dcxDesc: cudnnTensorDescriptor_t,
-        dcx: *mut ::core::ffi::c_void,
-        workSpace: *mut ::core::ffi::c_void,
-        workSpaceSizeInBytes: usize,
-        reserveSpace: *mut ::core::ffi::c_void,
-        reserveSpaceSizeInBytes: usize,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnRNNBackwardData
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            rnnDesc,
-            seqLength,
-            yDesc,
-            y,
-            dyDesc,
-            dy,
-            dhyDesc,
-            dhy,
-            dcyDesc,
-            dcy,
-            wDesc,
-            w,
-            hxDesc,
-            hx,
-            cxDesc,
-            cx,
-            dxDesc,
-            dx,
-            dhxDesc,
-            dhx,
-            dcxDesc,
-            dcx,
-            workSpace,
-            workSpaceSizeInBytes,
-            reserveSpace,
-            reserveSpaceSizeInBytes,
-        )
     }
     pub unsafe fn cudnnRNNBackwardData_v8(
         &self,
@@ -8968,45 +7793,6 @@ impl Lib {
             reserveSpace,
         )
     }
-    pub unsafe fn cudnnRNNBackwardWeights(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        seqLength: ::core::ffi::c_int,
-        xDesc: *const cudnnTensorDescriptor_t,
-        x: *const ::core::ffi::c_void,
-        hxDesc: cudnnTensorDescriptor_t,
-        hx: *const ::core::ffi::c_void,
-        yDesc: *const cudnnTensorDescriptor_t,
-        y: *const ::core::ffi::c_void,
-        workSpace: *const ::core::ffi::c_void,
-        workSpaceSizeInBytes: usize,
-        dwDesc: cudnnFilterDescriptor_t,
-        dw: *mut ::core::ffi::c_void,
-        reserveSpace: *const ::core::ffi::c_void,
-        reserveSpaceSizeInBytes: usize,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnRNNBackwardWeights
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            rnnDesc,
-            seqLength,
-            xDesc,
-            x,
-            hxDesc,
-            hx,
-            yDesc,
-            y,
-            workSpace,
-            workSpaceSizeInBytes,
-            dwDesc,
-            dw,
-            reserveSpace,
-            reserveSpaceSizeInBytes,
-        )
-    }
     pub unsafe fn cudnnRNNBackwardWeights_v8(
         &self,
         handle: cudnnHandle_t,
@@ -9046,387 +7832,6 @@ impl Lib {
             workSpace,
             reserveSpaceSize,
             reserveSpace,
-        )
-    }
-    pub unsafe fn cudnnRNNForwardTrainingEx(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        xDesc: cudnnRNNDataDescriptor_t,
-        x: *const ::core::ffi::c_void,
-        hxDesc: cudnnTensorDescriptor_t,
-        hx: *const ::core::ffi::c_void,
-        cxDesc: cudnnTensorDescriptor_t,
-        cx: *const ::core::ffi::c_void,
-        wDesc: cudnnFilterDescriptor_t,
-        w: *const ::core::ffi::c_void,
-        yDesc: cudnnRNNDataDescriptor_t,
-        y: *mut ::core::ffi::c_void,
-        hyDesc: cudnnTensorDescriptor_t,
-        hy: *mut ::core::ffi::c_void,
-        cyDesc: cudnnTensorDescriptor_t,
-        cy: *mut ::core::ffi::c_void,
-        kDesc: cudnnRNNDataDescriptor_t,
-        keys: *const ::core::ffi::c_void,
-        cDesc: cudnnRNNDataDescriptor_t,
-        cAttn: *mut ::core::ffi::c_void,
-        iDesc: cudnnRNNDataDescriptor_t,
-        iAttn: *mut ::core::ffi::c_void,
-        qDesc: cudnnRNNDataDescriptor_t,
-        queries: *mut ::core::ffi::c_void,
-        workSpace: *mut ::core::ffi::c_void,
-        workSpaceSizeInBytes: usize,
-        reserveSpace: *mut ::core::ffi::c_void,
-        reserveSpaceSizeInBytes: usize,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnRNNForwardTrainingEx
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            rnnDesc,
-            xDesc,
-            x,
-            hxDesc,
-            hx,
-            cxDesc,
-            cx,
-            wDesc,
-            w,
-            yDesc,
-            y,
-            hyDesc,
-            hy,
-            cyDesc,
-            cy,
-            kDesc,
-            keys,
-            cDesc,
-            cAttn,
-            iDesc,
-            iAttn,
-            qDesc,
-            queries,
-            workSpace,
-            workSpaceSizeInBytes,
-            reserveSpace,
-            reserveSpaceSizeInBytes,
-        )
-    }
-    pub unsafe fn cudnnRNNBackwardDataEx(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        yDesc: cudnnRNNDataDescriptor_t,
-        y: *const ::core::ffi::c_void,
-        dyDesc: cudnnRNNDataDescriptor_t,
-        dy: *const ::core::ffi::c_void,
-        dcDesc: cudnnRNNDataDescriptor_t,
-        dcAttn: *const ::core::ffi::c_void,
-        dhyDesc: cudnnTensorDescriptor_t,
-        dhy: *const ::core::ffi::c_void,
-        dcyDesc: cudnnTensorDescriptor_t,
-        dcy: *const ::core::ffi::c_void,
-        wDesc: cudnnFilterDescriptor_t,
-        w: *const ::core::ffi::c_void,
-        hxDesc: cudnnTensorDescriptor_t,
-        hx: *const ::core::ffi::c_void,
-        cxDesc: cudnnTensorDescriptor_t,
-        cx: *const ::core::ffi::c_void,
-        dxDesc: cudnnRNNDataDescriptor_t,
-        dx: *mut ::core::ffi::c_void,
-        dhxDesc: cudnnTensorDescriptor_t,
-        dhx: *mut ::core::ffi::c_void,
-        dcxDesc: cudnnTensorDescriptor_t,
-        dcx: *mut ::core::ffi::c_void,
-        dkDesc: cudnnRNNDataDescriptor_t,
-        dkeys: *mut ::core::ffi::c_void,
-        workSpace: *mut ::core::ffi::c_void,
-        workSpaceSizeInBytes: usize,
-        reserveSpace: *mut ::core::ffi::c_void,
-        reserveSpaceSizeInBytes: usize,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnRNNBackwardDataEx
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            rnnDesc,
-            yDesc,
-            y,
-            dyDesc,
-            dy,
-            dcDesc,
-            dcAttn,
-            dhyDesc,
-            dhy,
-            dcyDesc,
-            dcy,
-            wDesc,
-            w,
-            hxDesc,
-            hx,
-            cxDesc,
-            cx,
-            dxDesc,
-            dx,
-            dhxDesc,
-            dhx,
-            dcxDesc,
-            dcx,
-            dkDesc,
-            dkeys,
-            workSpace,
-            workSpaceSizeInBytes,
-            reserveSpace,
-            reserveSpaceSizeInBytes,
-        )
-    }
-    pub unsafe fn cudnnRNNBackwardWeightsEx(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        xDesc: cudnnRNNDataDescriptor_t,
-        x: *const ::core::ffi::c_void,
-        hxDesc: cudnnTensorDescriptor_t,
-        hx: *const ::core::ffi::c_void,
-        yDesc: cudnnRNNDataDescriptor_t,
-        y: *const ::core::ffi::c_void,
-        workSpace: *mut ::core::ffi::c_void,
-        workSpaceSizeInBytes: usize,
-        dwDesc: cudnnFilterDescriptor_t,
-        dw: *mut ::core::ffi::c_void,
-        reserveSpace: *mut ::core::ffi::c_void,
-        reserveSpaceSizeInBytes: usize,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnRNNBackwardWeightsEx
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            rnnDesc,
-            xDesc,
-            x,
-            hxDesc,
-            hx,
-            yDesc,
-            y,
-            workSpace,
-            workSpaceSizeInBytes,
-            dwDesc,
-            dw,
-            reserveSpace,
-            reserveSpaceSizeInBytes,
-        )
-    }
-    pub unsafe fn cudnnGetRNNForwardTrainingAlgorithmMaxCount(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        count: *mut ::core::ffi::c_int,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnGetRNNForwardTrainingAlgorithmMaxCount
-            .as_ref()
-            .expect("Expected function, got error."))(handle, rnnDesc, count)
-    }
-    pub unsafe fn cudnnFindRNNForwardTrainingAlgorithmEx(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        seqLength: ::core::ffi::c_int,
-        xDesc: *const cudnnTensorDescriptor_t,
-        x: *const ::core::ffi::c_void,
-        hxDesc: cudnnTensorDescriptor_t,
-        hx: *const ::core::ffi::c_void,
-        cxDesc: cudnnTensorDescriptor_t,
-        cx: *const ::core::ffi::c_void,
-        wDesc: cudnnFilterDescriptor_t,
-        w: *const ::core::ffi::c_void,
-        yDesc: *const cudnnTensorDescriptor_t,
-        y: *mut ::core::ffi::c_void,
-        hyDesc: cudnnTensorDescriptor_t,
-        hy: *mut ::core::ffi::c_void,
-        cyDesc: cudnnTensorDescriptor_t,
-        cy: *mut ::core::ffi::c_void,
-        findIntensity: f32,
-        requestedAlgoCount: ::core::ffi::c_int,
-        returnedAlgoCount: *mut ::core::ffi::c_int,
-        perfResults: *mut cudnnAlgorithmPerformance_t,
-        workspace: *mut ::core::ffi::c_void,
-        workSpaceSizeInBytes: usize,
-        reserveSpace: *mut ::core::ffi::c_void,
-        reserveSpaceSizeInBytes: usize,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnFindRNNForwardTrainingAlgorithmEx
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            rnnDesc,
-            seqLength,
-            xDesc,
-            x,
-            hxDesc,
-            hx,
-            cxDesc,
-            cx,
-            wDesc,
-            w,
-            yDesc,
-            y,
-            hyDesc,
-            hy,
-            cyDesc,
-            cy,
-            findIntensity,
-            requestedAlgoCount,
-            returnedAlgoCount,
-            perfResults,
-            workspace,
-            workSpaceSizeInBytes,
-            reserveSpace,
-            reserveSpaceSizeInBytes,
-        )
-    }
-    pub unsafe fn cudnnGetRNNBackwardDataAlgorithmMaxCount(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        count: *mut ::core::ffi::c_int,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnGetRNNBackwardDataAlgorithmMaxCount
-            .as_ref()
-            .expect("Expected function, got error."))(handle, rnnDesc, count)
-    }
-    pub unsafe fn cudnnFindRNNBackwardDataAlgorithmEx(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        seqLength: ::core::ffi::c_int,
-        yDesc: *const cudnnTensorDescriptor_t,
-        y: *const ::core::ffi::c_void,
-        dyDesc: *const cudnnTensorDescriptor_t,
-        dy: *const ::core::ffi::c_void,
-        dhyDesc: cudnnTensorDescriptor_t,
-        dhy: *const ::core::ffi::c_void,
-        dcyDesc: cudnnTensorDescriptor_t,
-        dcy: *const ::core::ffi::c_void,
-        wDesc: cudnnFilterDescriptor_t,
-        w: *const ::core::ffi::c_void,
-        hxDesc: cudnnTensorDescriptor_t,
-        hx: *const ::core::ffi::c_void,
-        cxDesc: cudnnTensorDescriptor_t,
-        cx: *const ::core::ffi::c_void,
-        dxDesc: *const cudnnTensorDescriptor_t,
-        dx: *mut ::core::ffi::c_void,
-        dhxDesc: cudnnTensorDescriptor_t,
-        dhx: *mut ::core::ffi::c_void,
-        dcxDesc: cudnnTensorDescriptor_t,
-        dcx: *mut ::core::ffi::c_void,
-        findIntensity: f32,
-        requestedAlgoCount: ::core::ffi::c_int,
-        returnedAlgoCount: *mut ::core::ffi::c_int,
-        perfResults: *mut cudnnAlgorithmPerformance_t,
-        workspace: *mut ::core::ffi::c_void,
-        workSpaceSizeInBytes: usize,
-        reserveSpace: *mut ::core::ffi::c_void,
-        reserveSpaceSizeInBytes: usize,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnFindRNNBackwardDataAlgorithmEx
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            rnnDesc,
-            seqLength,
-            yDesc,
-            y,
-            dyDesc,
-            dy,
-            dhyDesc,
-            dhy,
-            dcyDesc,
-            dcy,
-            wDesc,
-            w,
-            hxDesc,
-            hx,
-            cxDesc,
-            cx,
-            dxDesc,
-            dx,
-            dhxDesc,
-            dhx,
-            dcxDesc,
-            dcx,
-            findIntensity,
-            requestedAlgoCount,
-            returnedAlgoCount,
-            perfResults,
-            workspace,
-            workSpaceSizeInBytes,
-            reserveSpace,
-            reserveSpaceSizeInBytes,
-        )
-    }
-    pub unsafe fn cudnnGetRNNBackwardWeightsAlgorithmMaxCount(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        count: *mut ::core::ffi::c_int,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnGetRNNBackwardWeightsAlgorithmMaxCount
-            .as_ref()
-            .expect("Expected function, got error."))(handle, rnnDesc, count)
-    }
-    pub unsafe fn cudnnFindRNNBackwardWeightsAlgorithmEx(
-        &self,
-        handle: cudnnHandle_t,
-        rnnDesc: cudnnRNNDescriptor_t,
-        seqLength: ::core::ffi::c_int,
-        xDesc: *const cudnnTensorDescriptor_t,
-        x: *const ::core::ffi::c_void,
-        hxDesc: cudnnTensorDescriptor_t,
-        hx: *const ::core::ffi::c_void,
-        yDesc: *const cudnnTensorDescriptor_t,
-        y: *const ::core::ffi::c_void,
-        findIntensity: f32,
-        requestedAlgoCount: ::core::ffi::c_int,
-        returnedAlgoCount: *mut ::core::ffi::c_int,
-        perfResults: *mut cudnnAlgorithmPerformance_t,
-        workspace: *const ::core::ffi::c_void,
-        workSpaceSizeInBytes: usize,
-        dwDesc: cudnnFilterDescriptor_t,
-        dw: *mut ::core::ffi::c_void,
-        reserveSpace: *const ::core::ffi::c_void,
-        reserveSpaceSizeInBytes: usize,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnFindRNNBackwardWeightsAlgorithmEx
-            .as_ref()
-            .expect("Expected function, got error."))(
-            handle,
-            rnnDesc,
-            seqLength,
-            xDesc,
-            x,
-            hxDesc,
-            hx,
-            yDesc,
-            y,
-            findIntensity,
-            requestedAlgoCount,
-            returnedAlgoCount,
-            perfResults,
-            workspace,
-            workSpaceSizeInBytes,
-            dwDesc,
-            dw,
-            reserveSpace,
-            reserveSpaceSizeInBytes,
         )
     }
     pub unsafe fn cudnnMultiHeadAttnBackwardData(
@@ -9581,6 +7986,25 @@ impl Lib {
             maxLabelLength,
         )
     }
+    pub unsafe fn cudnnSetCTCLossDescriptor_v9(
+        &self,
+        ctcLossDesc: cudnnCTCLossDescriptor_t,
+        compType: cudnnDataType_t,
+        normMode: cudnnLossNormalizationMode_t,
+        ctcGradMode: cudnnCTCGradMode_t,
+        maxLabelLength: ::core::ffi::c_int,
+    ) -> cudnnStatus_t {
+        (self
+            .cudnnSetCTCLossDescriptor_v9
+            .as_ref()
+            .expect("Expected function, got error."))(
+            ctcLossDesc,
+            compType,
+            normMode,
+            ctcGradMode,
+            maxLabelLength,
+        )
+    }
     pub unsafe fn cudnnGetCTCLossDescriptor(
         &self,
         ctcLossDesc: cudnnCTCLossDescriptor_t,
@@ -9621,6 +8045,25 @@ impl Lib {
             compType,
             normMode,
             gradMode,
+            maxLabelLength,
+        )
+    }
+    pub unsafe fn cudnnGetCTCLossDescriptor_v9(
+        &self,
+        ctcLossDesc: cudnnCTCLossDescriptor_t,
+        compType: *mut cudnnDataType_t,
+        normMode: *mut cudnnLossNormalizationMode_t,
+        ctcGradMode: *mut cudnnCTCGradMode_t,
+        maxLabelLength: *mut ::core::ffi::c_int,
+    ) -> cudnnStatus_t {
+        (self
+            .cudnnGetCTCLossDescriptor_v9
+            .as_ref()
+            .expect("Expected function, got error."))(
+            ctcLossDesc,
+            compType,
+            normMode,
+            ctcGradMode,
             maxLabelLength,
         )
     }
@@ -9750,12 +8193,6 @@ impl Lib {
             gradientsDesc,
             sizeInBytes,
         )
-    }
-    pub unsafe fn cudnnAdvTrainVersionCheck(&self) -> cudnnStatus_t {
-        (self
-            .cudnnAdvTrainVersionCheck
-            .as_ref()
-            .expect("Expected function, got error."))()
     }
     pub unsafe fn cudnnCreateConvolutionDescriptor(
         &self,
@@ -10408,9 +8845,9 @@ impl Lib {
             gradUnfoldTransDesc,
         )
     }
-    pub unsafe fn cudnnCnnInferVersionCheck(&self) -> cudnnStatus_t {
+    pub unsafe fn cudnnCnnVersionCheck(&self) -> cudnnStatus_t {
         (self
-            .cudnnCnnInferVersionCheck
+            .cudnnCnnVersionCheck
             .as_ref()
             .expect("Expected function, got error."))()
     }
@@ -10707,99 +9144,5 @@ impl Lib {
             .cudnnFusedOpsExecute
             .as_ref()
             .expect("Expected function, got error."))(handle, plan, varPack)
-    }
-    pub unsafe fn cudnnCnnTrainVersionCheck(&self) -> cudnnStatus_t {
-        (self
-            .cudnnCnnTrainVersionCheck
-            .as_ref()
-            .expect("Expected function, got error."))()
-    }
-    pub unsafe fn cudnnBackendCreateDescriptor(
-        &self,
-        descriptorType: cudnnBackendDescriptorType_t,
-        descriptor: *mut cudnnBackendDescriptor_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnBackendCreateDescriptor
-            .as_ref()
-            .expect("Expected function, got error."))(descriptorType, descriptor)
-    }
-    pub unsafe fn cudnnBackendDestroyDescriptor(
-        &self,
-        descriptor: cudnnBackendDescriptor_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnBackendDestroyDescriptor
-            .as_ref()
-            .expect("Expected function, got error."))(descriptor)
-    }
-    pub unsafe fn cudnnBackendInitialize(
-        &self,
-        descriptor: cudnnBackendDescriptor_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnBackendInitialize
-            .as_ref()
-            .expect("Expected function, got error."))(descriptor)
-    }
-    pub unsafe fn cudnnBackendFinalize(
-        &self,
-        descriptor: cudnnBackendDescriptor_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnBackendFinalize
-            .as_ref()
-            .expect("Expected function, got error."))(descriptor)
-    }
-    pub unsafe fn cudnnBackendSetAttribute(
-        &self,
-        descriptor: cudnnBackendDescriptor_t,
-        attributeName: cudnnBackendAttributeName_t,
-        attributeType: cudnnBackendAttributeType_t,
-        elementCount: i64,
-        arrayOfElements: *const ::core::ffi::c_void,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnBackendSetAttribute
-            .as_ref()
-            .expect("Expected function, got error."))(
-            descriptor,
-            attributeName,
-            attributeType,
-            elementCount,
-            arrayOfElements,
-        )
-    }
-    pub unsafe fn cudnnBackendGetAttribute(
-        &self,
-        descriptor: cudnnBackendDescriptor_t,
-        attributeName: cudnnBackendAttributeName_t,
-        attributeType: cudnnBackendAttributeType_t,
-        requestedElementCount: i64,
-        elementCount: *mut i64,
-        arrayOfElements: *mut ::core::ffi::c_void,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnBackendGetAttribute
-            .as_ref()
-            .expect("Expected function, got error."))(
-            descriptor,
-            attributeName,
-            attributeType,
-            requestedElementCount,
-            elementCount,
-            arrayOfElements,
-        )
-    }
-    pub unsafe fn cudnnBackendExecute(
-        &self,
-        handle: cudnnHandle_t,
-        executionPlan: cudnnBackendDescriptor_t,
-        variantPack: cudnnBackendDescriptor_t,
-    ) -> cudnnStatus_t {
-        (self
-            .cudnnBackendExecute
-            .as_ref()
-            .expect("Expected function, got error."))(handle, executionPlan, variantPack)
     }
 }
