@@ -5,7 +5,8 @@ use std::mem::MaybeUninit;
 use std::ptr;
 
 use cudarc::cudnn::result::{
-    backend_finalize, backend_get_attribute, backend_set_attribute, backend_create_descriptor, create_handle
+    backend_create_descriptor, backend_finalize, backend_get_attribute, backend_set_attribute,
+    create_handle,
 };
 use cudarc::cudnn::sys::{
     cudnnBackendAttributeName_t, cudnnBackendAttributeType_t, cudnnBackendDescriptorType_t,
@@ -13,11 +14,12 @@ use cudarc::cudnn::sys::{
 };
 
 use cudarc::cudnn::sys::{self, lib};
+use cudarc::driver::{CudaDevice, DevicePtr, DevicePtrMut};
 
 fn create_tensor_descriptor(
-    dim: &[i32],
-    strides: &[i32],
-    ui: char,
+    dim: &[i64],
+    strides: &[i64],
+    id: i64,
     alignment: i64,
     data_type: cudnnDataType_t,
 ) -> Result<cudnnBackendDescriptor_t, cudarc::cudnn::CudnnError> {
@@ -52,7 +54,7 @@ fn create_tensor_descriptor(
         cudnnBackendAttributeName_t::CUDNN_ATTR_TENSOR_UNIQUE_ID,
         cudnnBackendAttributeType_t::CUDNN_TYPE_INT64,
         1,
-        &(ui) as *const char as *const std::ffi::c_void,
+        &(id) as *const _ as *const std::ffi::c_void,
     )?;
 
     backend_set_attribute(
@@ -62,8 +64,9 @@ fn create_tensor_descriptor(
         1,
         &(alignment) as *const i64 as *const std::ffi::c_void,
     )?;
-
+    println!("finalize");
     backend_finalize(desc)?;
+    println!("done");
     Ok(desc)
 }
 
@@ -169,25 +172,26 @@ fn create_operation_graph_descriptor(
     Ok(desc)
 }
 
-fn main() -> Result<(), cudarc::cudnn::CudnnError> {
-    let n = 1;
-    let g = 1;
-    let c = 3;
-    let d = 1;
-    let h = 224;
-    let w = 224;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let n = 2;
 
-    let x_dim = [n, g, c, d, h, w];
-    let x_str = [g * c * d * h * w, c * d * h * w, d * h * w, h * w, w, 1];
-    let x_ui = 'x';
+    let x_dim = [1, n];
+    let x_str = [n, 1];
+    let x_ui = 1;
     let alignment = 4i64;
     let data_type = cudnnDataType_t::CUDNN_DATA_FLOAT;
 
+    println!("create tensor descriptor");
+
     let x_desc = create_tensor_descriptor(&x_dim, &x_str, x_ui, alignment, data_type)?;
 
-    let y_desc = create_tensor_descriptor(&x_dim, &x_str, 'y', alignment, data_type)?;
+    println!("x done");
 
-    let z_desc = create_tensor_descriptor(&x_dim, &x_str, 'z', alignment, data_type)?;
+    let y_desc = create_tensor_descriptor(&x_dim, &x_str, 2, alignment, data_type)?;
+
+    let z_desc = create_tensor_descriptor(&x_dim, &x_str, 3, alignment, data_type)?;
+
+    println!("create add");
 
     let add_desc = create_add_descriptor()?;
 
@@ -196,7 +200,6 @@ fn main() -> Result<(), cudarc::cudnn::CudnnError> {
     let handle = create_handle()?;
     let graph_desc = create_operation_graph_descriptor(&f_desc, &handle)?;
 
-    
     let mut workspace_size: MaybeUninit<i64> = MaybeUninit::uninit();
     let mut element_count: MaybeUninit<i64> = MaybeUninit::uninit();
     backend_get_attribute(
@@ -207,9 +210,7 @@ fn main() -> Result<(), cudarc::cudnn::CudnnError> {
         element_count.as_mut_ptr(),
         workspace_size.as_mut_ptr() as *mut std::ffi::c_void,
     )?;
-    let (v, w) = unsafe {
-       (workspace_size.assume_init(), element_count.assume_init())
-    };
+    let (v, w) = unsafe { (workspace_size.assume_init(), element_count.assume_init()) };
     dbg!(v);
     dbg!(w);
 
@@ -223,7 +224,7 @@ fn main() -> Result<(), cudarc::cudnn::CudnnError> {
         1,
         &graph_desc as *const _ as *const std::ffi::c_void,
     )?;
-    let gidx: i64 = 0;
+    let gidx: i64 = 1;
     backend_set_attribute(
         engine_desc,
         cudnnBackendAttributeName_t::CUDNN_ATTR_ENGINE_GLOBAL_INDEX,
@@ -246,56 +247,104 @@ fn main() -> Result<(), cudarc::cudnn::CudnnError> {
         &engine_desc as *const _ as *const std::ffi::c_void,
     )?;
 
-    println!("finalize");
+    println!("ploooooooooooop");
     backend_finalize(engcfg)?;
 
-    // // execution plan
-    // let plan = backend_create_descriptor(
-    //     cudnnBackendDescriptorType_t::CUDNN_BACKEND_EXECUTION_PLAN_DESCRIPTOR,
-    // )?;
-    // backend_set_attribute(
-    //     plan,
-    //     cudnnBackendAttributeName_t::CUDNN_ATTR_EXECUTION_PLAN_HANDLE,
-    //     cudnnBackendAttributeType_t::CUDNN_TYPE_HANDLE,
-    //     1,
-    //     &handle as *const _ as *const std::ffi::c_void,
-    // )?;
-    // backend_set_attribute(
-    //     plan,
-    //     cudnnBackendAttributeName_t::CUDNN_ATTR_EXECUTION_PLAN_ENGINE_CONFIG,
-    //     cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
-    //     1,
-    //     &engcfg as *const _ as *const std::ffi::c_void,
-    // )?;
-    // backend_finalize(plan)?;
+    // execution plan
+    let plan = backend_create_descriptor(
+        cudnnBackendDescriptorType_t::CUDNN_BACKEND_EXECUTION_PLAN_DESCRIPTOR,
+    )?;
+    backend_set_attribute(
+        plan,
+        cudnnBackendAttributeName_t::CUDNN_ATTR_EXECUTION_PLAN_HANDLE,
+        cudnnBackendAttributeType_t::CUDNN_TYPE_HANDLE,
+        1,
+        &handle as *const _ as *const std::ffi::c_void,
+    )?;
+    backend_set_attribute(
+        plan,
+        cudnnBackendAttributeName_t::CUDNN_ATTR_EXECUTION_PLAN_ENGINE_CONFIG,
+        cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
+        1,
+        &engcfg as *const _ as *const std::ffi::c_void,
+    )?;
+    backend_finalize(plan)?;
 
-    // let mut workspace_size: MaybeUninit<i64> = MaybeUninit::uninit();
-    // let mut element_count: MaybeUninit<i64> = MaybeUninit::uninit();
+    let mut workspace_size: MaybeUninit<i64> = MaybeUninit::uninit();
+    let mut element_count: MaybeUninit<i64> = MaybeUninit::uninit();
 
-    // unsafe {
-    //     lib()
-    //         .cudnnBackendGetAttribute(
-    //             plan,
-    //             cudnnBackendAttributeName_t::CUDNN_ATTR_EXECUTION_PLAN_WORKSPACE_SIZE,
-    //             cudnnBackendAttributeType_t::CUDNN_TYPE_INT64,
-    //             1,
-    //             element_count.as_mut_ptr(),
-    //             workspace_size.as_mut_ptr() as *mut std::ffi::c_void,
-    //         )
-    //         .result()?;
-    // }
+    let (workspace_size, element_count) = unsafe {
+        lib()
+            .cudnnBackendGetAttribute(
+                plan,
+                cudnnBackendAttributeName_t::CUDNN_ATTR_EXECUTION_PLAN_WORKSPACE_SIZE,
+                cudnnBackendAttributeType_t::CUDNN_TYPE_INT64,
+                1,
+                element_count.as_mut_ptr(),
+                workspace_size.as_mut_ptr() as *mut std::ffi::c_void,
+            )
+            .result()?;
+        (workspace_size.assume_init(), element_count.assume_init())
+    };
+    dbg!(workspace_size);
+    dbg!(element_count);
 
-    // // variant pack descriptor
-    // let variant_pack_desc = backend_create_descriptor(
-    //     cudnnBackendDescriptorType_t::CUDNN_BACKEND_VARIANT_PACK_DESCRIPTOR,
-    // )?;
+    // variant pack descriptor
+    let variant_pack_desc = backend_create_descriptor(
+        cudnnBackendDescriptorType_t::CUDNN_BACKEND_VARIANT_PACK_DESCRIPTOR,
+    )?;
 
-    // cudnnBackendSetAttribute(varpack, CUDNN_ATTR_VARIANT_PACK_DATA_POINTERS,
-    //     CUDNN_TYPE_VOID_PTR, 3, dev_ptrs);
-    // cudnnBackendSetAttribute(varpack, CUDNN_ATTR_VARIANT_PACK_UNIQUE_IDS,
-    //         CUDNN_TYPE_INT64, 3, uids);
-    // cudnnBackendSetAttribute(varpack, CUDNN_ATTR_VARIANT_PACK_WORKSPACE,
-    //         CUDNN_TYPE_VOID_PTR, 1, &workspace);
+    let uids = [1i64, 2, 3];
+    backend_set_attribute(
+        variant_pack_desc,
+        cudnnBackendAttributeName_t::CUDNN_ATTR_VARIANT_PACK_UNIQUE_IDS,
+        cudnnBackendAttributeType_t::CUDNN_TYPE_INT64,
+        3,
+        uids.as_ptr() as *const std::ffi::c_void,
+    )?;
+
+    let dev = CudaDevice::new(0)?;
+    let mut b = dev.alloc_zeros::<f32>(2)?;
+    dev.htod_copy_into(vec![3.0; 2], &mut b)?;
+    let mut c = dev.alloc_zeros::<f32>(2)?;
+    dev.htod_copy_into(vec![2.0; 2], &mut c)?;
+    let mut d = dev.alloc_zeros::<f32>(2)?;
+    dev.htod_copy_into(vec![0.0; 2], &mut d)?;
+    let mut workspace = dev.alloc_zeros::<f32>(2)?;
+    dev.htod_copy_into(vec![0.0; 2], &mut workspace)?;
+
+    let mut dev_ptrs = [
+        *b.device_ptr_mut() as *mut std::ffi::c_void,
+        *c.device_ptr_mut() as *mut std::ffi::c_void,
+        *d.device_ptr_mut() as *mut std::ffi::c_void,
+    ];
+
+    backend_set_attribute(
+        variant_pack_desc,
+        cudnnBackendAttributeName_t::CUDNN_ATTR_VARIANT_PACK_WORKSPACE,
+        cudnnBackendAttributeType_t::CUDNN_TYPE_VOID_PTR,
+        1,
+        &workspace as *const _ as *const std::ffi::c_void,
+    )?;
+
+    backend_set_attribute(
+        variant_pack_desc,
+        cudnnBackendAttributeName_t::CUDNN_ATTR_VARIANT_PACK_DATA_POINTERS,
+        cudnnBackendAttributeType_t::CUDNN_TYPE_VOID_PTR,
+        3,
+        dev_ptrs.as_mut_ptr() as *mut std::ffi::c_void,
+    )?;
+
+    backend_finalize(variant_pack_desc)?;
+
+    unsafe {
+        lib().cudnnBackendExecute(handle, plan, variant_pack_desc);
+    }
+
+
+    println!("done");
+    let d_host = dev.sync_reclaim(d)?;
+    dbg!(d_host);
 
     Ok(())
 }
