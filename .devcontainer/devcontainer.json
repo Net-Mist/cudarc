@@ -1,0 +1,29 @@
+{
+	"name": "Candle Dockerfile",
+	"build": {
+        "dockerfile": "Dockerfile",
+        "context": "."
+    },
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-azuretools.vscode-docker",
+				"eamodio.gitlens",
+				"ms-python.python",
+				"ms-toolsai.jupyter",
+				"charliermarsh.ruff",
+				"rust-lang.rust-analyzer",
+				"GitHub.copilot"
+			]
+		}
+	},
+	"mounts": [
+		"source=/home/mist/workspace/models,target=/root/.cache/huggingface/,type=bind,consistency=cached"
+	],
+	"runArgs": [
+		"--gpus=all",
+		"--shm-size=8gb",
+		"--privileged=true"
+	],
+	// "updateRemoteUserUID": false
+}
