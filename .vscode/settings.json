@@ -1,0 +1,8 @@
+{
+    "rust-analyzer.cargo.features": [
+        "cuda-12040",
+        "cudnn",
+        "f16",
+        "nvtx"
+    ],
+}
