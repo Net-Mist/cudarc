@@ -6,7 +6,13 @@ pub const CUDA_VERSION: u32 = 12060;
 pub struct CUstream_st {
     _unused: [u8; 0],
 }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct CUgraph_st {
+    _unused: [u8; 0],
+}
 pub type cudaStream_t = *mut CUstream_st;
+pub type cudaGraph_t = *mut CUgraph_st;
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub enum libraryPropertyType_t {
@@ -63,6 +69,7 @@ pub enum cudnnStatus_t {
     CUDNN_STATUS_BAD_PARAM_SHAPE_MISMATCH = 2008,
     CUDNN_STATUS_BAD_PARAM_DUPLICATED_ENTRIES = 2009,
     CUDNN_STATUS_BAD_PARAM_ATTRIBUTE_TYPE = 2010,
+    CUDNN_STATUS_BAD_PARAM_CUDA_GRAPH_MISMATCH = 2011,
     CUDNN_STATUS_NOT_SUPPORTED = 3000,
     CUDNN_STATUS_NOT_SUPPORTED_GRAPH_PATTERN = 3001,
     CUDNN_STATUS_NOT_SUPPORTED_SHAPE = 3002,
@@ -76,6 +83,7 @@ pub enum cudnnStatus_t {
     CUDNN_STATUS_NOT_SUPPORTED_SHARED_MEMORY_INSUFFICIENT = 3010,
     CUDNN_STATUS_NOT_SUPPORTED_PADDING = 3011,
     CUDNN_STATUS_NOT_SUPPORTED_BAD_LAUNCH_PARAM = 3012,
+    CUDNN_STATUS_NOT_SUPPORTED_CUDA_GRAPH_NATIVE_API = 3013,
     CUDNN_STATUS_INTERNAL_ERROR = 4000,
     CUDNN_STATUS_INTERNAL_ERROR_COMPILATION_FAILED = 4001,
     CUDNN_STATUS_INTERNAL_ERROR_UNEXPECTED_VALUE = 4002,
@@ -521,6 +529,7 @@ pub enum cudnnBackendAttributeName_t {
     CUDNN_ATTR_EXECUTION_PLAN_COMPUTED_INTERMEDIATE_UIDS = 403,
     CUDNN_ATTR_EXECUTION_PLAN_RUN_ONLY_INTERMEDIATE_UIDS = 404,
     CUDNN_ATTR_EXECUTION_PLAN_JSON_REPRESENTATION = 405,
+    CUDNN_ATTR_EXECUTION_PLAN_KERNEL_CACHE = 406,
     CUDNN_ATTR_INTERMEDIATE_INFO_UNIQUE_ID = 500,
     CUDNN_ATTR_INTERMEDIATE_INFO_SIZE = 501,
     CUDNN_ATTR_INTERMEDIATE_INFO_DEPENDENT_DATA_UIDS = 502,
@@ -579,6 +588,7 @@ pub enum cudnnBackendAttributeName_t {
     CUDNN_ATTR_OPERATIONGRAPH_HANDLE = 800,
     CUDNN_ATTR_OPERATIONGRAPH_OPS = 801,
     CUDNN_ATTR_OPERATIONGRAPH_ENGINE_GLOBAL_COUNT = 802,
+    CUDNN_ATTR_OPERATIONGRAPH_IS_DYNAMIC_SHAPE_ENABLED = 803,
     CUDNN_ATTR_TENSOR_BYTE_ALIGNMENT = 900,
     CUDNN_ATTR_TENSOR_DATA_TYPE = 901,
     CUDNN_ATTR_TENSOR_DIMENSIONS = 902,
@@ -665,6 +675,10 @@ pub enum cudnnBackendAttributeName_t {
     CUDNN_ATTR_OPERATION_SIGNAL_VALUE = 1902,
     CUDNN_ATTR_OPERATION_SIGNAL_XDESC = 1903,
     CUDNN_ATTR_OPERATION_SIGNAL_YDESC = 1904,
+    CUDNN_ATTR_OPERATION_PAGED_CACHE_LOAD_CONTAINER_DESC = 1950,
+    CUDNN_ATTR_OPERATION_PAGED_CACHE_LOAD_YDESC = 1951,
+    CUDNN_ATTR_OPERATION_PAGED_CACHE_LOAD_SEQUENCE_DESC = 1952,
+    CUDNN_ATTR_OPERATION_PAGED_CACHE_LOAD_PAGE_TABLE_DESC = 1953,
     CUDNN_ATTR_OPERATION_NORM_FWD_MODE = 2000,
     CUDNN_ATTR_OPERATION_NORM_FWD_PHASE = 2001,
     CUDNN_ATTR_OPERATION_NORM_FWD_XDESC = 2002,
@@ -703,6 +717,8 @@ pub enum cudnnBackendAttributeName_t {
     CUDNN_ATTR_OPERATION_RNG_SEED = 2311,
     CUDNN_ATTR_OPERATION_RNG_DESC = 2312,
     CUDNN_ATTR_OPERATION_RNG_OFFSET_DESC = 2313,
+    CUDNN_ATTR_KERNEL_CACHE_OPERATION_GRAPH = 2400,
+    CUDNN_ATTR_KERNEL_CACHE_IS_ENGINECFG_KERNEL_CACHED = 2401,
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
@@ -775,6 +791,8 @@ pub enum cudnnBackendDescriptorType_t {
     CUDNN_BACKEND_OPERATION_RESHAPE_DESCRIPTOR = 31,
     CUDNN_BACKEND_RNG_DESCRIPTOR = 32,
     CUDNN_BACKEND_OPERATION_RNG_DESCRIPTOR = 33,
+    CUDNN_BACKEND_KERNEL_CACHE_DESCRIPTOR = 34,
+    CUDNN_BACKEND_OPERATION_PAGED_CACHE_LOAD_DESCRIPTOR = 35,
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
@@ -797,7 +815,8 @@ pub enum cudnnBackendBehaviorNote_t {
     CUDNN_BEHAVIOR_NOTE_RUNTIME_COMPILATION = 0,
     CUDNN_BEHAVIOR_NOTE_REQUIRES_FILTER_INT8x32_REORDER = 1,
     CUDNN_BEHAVIOR_NOTE_REQUIRES_BIAS_INT8x32_REORDER = 2,
-    CUDNN_BEHAVIOR_NOTE_TYPE_COUNT = 3,
+    CUDNN_BEHAVIOR_NOTE_SUPPORTS_CUDA_GRAPH_NATIVE_API = 3,
+    CUDNN_BEHAVIOR_NOTE_TYPE_COUNT = 4,
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
@@ -1773,6 +1792,24 @@ pub struct Lib {
             handle: cudnnHandle_t,
             executionPlan: cudnnBackendDescriptor_t,
             variantPack: cudnnBackendDescriptor_t,
+        ) -> cudnnStatus_t,
+        ::libloading::Error,
+    >,
+    pub cudnnBackendPopulateCudaGraph: Result<
+        unsafe extern "C" fn(
+            handle: cudnnHandle_t,
+            executionPlan: cudnnBackendDescriptor_t,
+            variantPack: cudnnBackendDescriptor_t,
+            graph: cudaGraph_t,
+        ) -> cudnnStatus_t,
+        ::libloading::Error,
+    >,
+    pub cudnnBackendUpdateCudaGraph: Result<
+        unsafe extern "C" fn(
+            handle: cudnnHandle_t,
+            executionPlan: cudnnBackendDescriptor_t,
+            variantPack: cudnnBackendDescriptor_t,
+            graph: cudaGraph_t,
         ) -> cudnnStatus_t,
         ::libloading::Error,
     >,
@@ -4069,6 +4106,12 @@ impl Lib {
         let cudnnBackendSetAttribute = __library.get(b"cudnnBackendSetAttribute\0").map(|sym| *sym);
         let cudnnBackendGetAttribute = __library.get(b"cudnnBackendGetAttribute\0").map(|sym| *sym);
         let cudnnBackendExecute = __library.get(b"cudnnBackendExecute\0").map(|sym| *sym);
+        let cudnnBackendPopulateCudaGraph = __library
+            .get(b"cudnnBackendPopulateCudaGraph\0")
+            .map(|sym| *sym);
+        let cudnnBackendUpdateCudaGraph = __library
+            .get(b"cudnnBackendUpdateCudaGraph\0")
+            .map(|sym| *sym);
         let cudnnCreateTensorDescriptor = __library
             .get(b"cudnnCreateTensorDescriptor\0")
             .map(|sym| *sym);
@@ -4595,6 +4638,8 @@ impl Lib {
             cudnnBackendSetAttribute,
             cudnnBackendGetAttribute,
             cudnnBackendExecute,
+            cudnnBackendPopulateCudaGraph,
+            cudnnBackendUpdateCudaGraph,
             cudnnCreateTensorDescriptor,
             cudnnSetTensor4dDescriptor,
             cudnnSetTensor4dDescriptorEx,
@@ -4997,6 +5042,34 @@ impl Lib {
             .cudnnBackendExecute
             .as_ref()
             .expect("Expected function, got error."))(handle, executionPlan, variantPack)
+    }
+    pub unsafe fn cudnnBackendPopulateCudaGraph(
+        &self,
+        handle: cudnnHandle_t,
+        executionPlan: cudnnBackendDescriptor_t,
+        variantPack: cudnnBackendDescriptor_t,
+        graph: cudaGraph_t,
+    ) -> cudnnStatus_t {
+        (self
+            .cudnnBackendPopulateCudaGraph
+            .as_ref()
+            .expect("Expected function, got error."))(
+            handle, executionPlan, variantPack, graph
+        )
+    }
+    pub unsafe fn cudnnBackendUpdateCudaGraph(
+        &self,
+        handle: cudnnHandle_t,
+        executionPlan: cudnnBackendDescriptor_t,
+        variantPack: cudnnBackendDescriptor_t,
+        graph: cudaGraph_t,
+    ) -> cudnnStatus_t {
+        (self
+            .cudnnBackendUpdateCudaGraph
+            .as_ref()
+            .expect("Expected function, got error."))(
+            handle, executionPlan, variantPack, graph
+        )
     }
     pub unsafe fn cudnnCreateTensorDescriptor(
         &self,
