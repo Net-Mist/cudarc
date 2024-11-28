@@ -19,6 +19,7 @@
 mod conv;
 mod core;
 mod reduce;
+mod graph;
 
 #[allow(deprecated)]
 pub use self::conv::{
@@ -37,6 +38,7 @@ pub use self::conv::{
 pub use self::core::{Cudnn, CudnnDataType, TensorDescriptor};
 pub use self::reduce::{FlatIndices, NoIndices, ReduceTensor, ReductionDescriptor};
 pub use super::result::CudnnError;
+pub use self::graph::BackendTensorDescriptor;
 
 #[cfg(test)]
 mod tests {

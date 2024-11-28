@@ -14,6 +14,7 @@ use cudarc::cudnn::sys::{
 };
 
 use cudarc::cudnn::sys::{self, lib};
+use cudarc::cudnn::BackendTensorDescriptor;
 use cudarc::driver::{CudaDevice, DevicePtr, DevicePtrMut};
 
 fn create_tensor_descriptor(
@@ -22,52 +23,15 @@ fn create_tensor_descriptor(
     id: i64,
     alignment: i64,
     data_type: cudnnDataType_t,
-) -> Result<cudnnBackendDescriptor_t, cudarc::cudnn::CudnnError> {
-    let desc: cudnnBackendDescriptor_t =
-        backend_create_descriptor(cudnnBackendDescriptorType_t::CUDNN_BACKEND_TENSOR_DESCRIPTOR)?;
+) -> Result<BackendTensorDescriptor, cudarc::cudnn::CudnnError> {
 
-    // let array = [data_type];
-    backend_set_attribute(
-        desc,
-        cudnnBackendAttributeName_t::CUDNN_ATTR_TENSOR_DATA_TYPE,
-        cudnnBackendAttributeType_t::CUDNN_TYPE_DATA_TYPE,
-        1,
-        &(data_type) as *const cudnnDataType_t as *const std::ffi::c_void,
-    )?;
-    backend_set_attribute(
-        desc,
-        cudnnBackendAttributeName_t::CUDNN_ATTR_TENSOR_DIMENSIONS,
-        cudnnBackendAttributeType_t::CUDNN_TYPE_INT64,
-        dim.len() as i64,
-        dim.as_ptr() as *const std::ffi::c_void,
-    )?;
-    backend_set_attribute(
-        desc,
-        cudnnBackendAttributeName_t::CUDNN_ATTR_TENSOR_STRIDES,
-        cudnnBackendAttributeType_t::CUDNN_TYPE_INT64,
-        strides.len() as i64,
-        strides.as_ptr() as *const std::ffi::c_void,
-    )?;
-
-    backend_set_attribute(
-        desc,
-        cudnnBackendAttributeName_t::CUDNN_ATTR_TENSOR_UNIQUE_ID,
-        cudnnBackendAttributeType_t::CUDNN_TYPE_INT64,
-        1,
-        &(id) as *const _ as *const std::ffi::c_void,
-    )?;
-
-    backend_set_attribute(
-        desc,
-        cudnnBackendAttributeName_t::CUDNN_ATTR_TENSOR_BYTE_ALIGNMENT,
-        cudnnBackendAttributeType_t::CUDNN_TYPE_INT64,
-        1,
-        &(alignment) as *const i64 as *const std::ffi::c_void,
-    )?;
-    println!("finalize");
-    backend_finalize(desc)?;
-    println!("done");
-    Ok(desc)
+    let tensor = BackendTensorDescriptor::new()?
+        .set_tensor_data_type(&data_type)?
+        .set_tensor_dimensions(dim)?
+        .set_tensor_byte_alignment(alignment)?
+        .set_tensor_strides(strides)?
+        .finalize()?;
+    Ok(tensor)
 }
 
 fn create_add_descriptor() -> Result<cudnnBackendDescriptor_t, cudarc::cudnn::CudnnError> {
