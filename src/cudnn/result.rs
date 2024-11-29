@@ -811,15 +811,15 @@ pub fn backend_set_attribute(
     array_of_elements: *const ::core::ffi::c_void,
 ) -> Result<(), CudnnError> {
     unsafe {
-        lib()
-            .cudnnBackendSetAttribute(
-                descriptor,
-                attribute_name,
-                attribute_type,
-                element_count,
-                array_of_elements,
-            )
-    }.result()
+        lib().cudnnBackendSetAttribute(
+            descriptor,
+            attribute_name,
+            attribute_type,
+            element_count,
+            array_of_elements,
+        )
+    }
+    .result()
 }
 
 pub fn backend_get_attribute(
@@ -846,10 +846,14 @@ pub fn backend_get_attribute(
 
 /// Wrapper for cudnnBackendFinalize.
 /// See [nvidia docs](https://docs.nvidia.com/deeplearning/cudnn/latest/api/cudnn-graph-library.html#cudnnbackendfinalize)
-pub fn backend_finalize(
-    descriptor: sys::cudnnBackendDescriptor_t,
+pub fn backend_finalize(descriptor: sys::cudnnBackendDescriptor_t) -> Result<(), CudnnError> {
+    unsafe { lib().cudnnBackendFinalize(descriptor) }.result()
+}
+
+pub fn backend_execute(
+    handle: sys::cudnnHandle_t,
+    execution_plan: sys::cudnnBackendDescriptor_t,
+    variant_pack: sys::cudnnBackendDescriptor_t,
 ) -> Result<(), CudnnError> {
-    unsafe {
-        lib().cudnnBackendFinalize(descriptor)
-    }.result()
+    unsafe { lib().cudnnBackendExecute(handle, execution_plan, variant_pack) }.result()
 }

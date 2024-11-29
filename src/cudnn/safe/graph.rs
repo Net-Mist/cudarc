@@ -11,7 +11,7 @@ use crate::{
             cudnnBackendDescriptor_t, cudnnDataType_t, cudnnHandle_t, cudnnPointwiseMode_t,
         },
     },
-    driver::{CudaSlice, DevicePtr},
+    driver::{CudaSlice, DevicePtr, DevicePtrMut},
 };
 
 use super::{Cudnn, CudnnError};
@@ -38,7 +38,7 @@ impl BackendTensorDescriptorBuilder {
             cudnnBackendAttributeName_t::CUDNN_ATTR_TENSOR_UNIQUE_ID,
             cudnnBackendAttributeType_t::CUDNN_TYPE_INT64,
             1,
-            id as *const i64 as *const std::ffi::c_void,
+            &id as *const i64 as *const std::ffi::c_void,
         )?;
         Ok(self)
     }
@@ -239,7 +239,7 @@ impl OperationGraphDescriptorBuilder {
             cudnnBackendAttributeName_t::CUDNN_ATTR_OPERATIONGRAPH_OPS,
             cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
             1,
-            fprop.descriptor as *const _ as *const std::ffi::c_void,
+            &(fprop.descriptor) as *const _ as *const std::ffi::c_void,
         )?;
         Ok(self)
     }
@@ -455,27 +455,32 @@ impl VariantPackDescriptorBuilder {
         Ok(self)
     }
 
-    pub fn set_workspace<T>(self, workspace: CudaSlice<T>) -> Result<Self, CudnnError> {
+    pub fn set_workspace<T>(self, workspace: &mut CudaSlice<T>) -> Result<Self, CudnnError> {
         backend_set_attribute(
             self.descriptor,
             cudnnBackendAttributeName_t::CUDNN_ATTR_VARIANT_PACK_WORKSPACE,
             cudnnBackendAttributeType_t::CUDNN_TYPE_VOID_PTR,
             1,
-            *workspace.device_ptr() as *const std::ffi::c_void,
+            workspace.device_ptr_mut() as *mut _ as *mut std::ffi::c_void,
         )?;
         Ok(self)
     }
 
-    pub fn set_data_pointers(
+    pub fn set_data_pointers<T>(
         self,
-        data_pointers: &[*mut std::ffi::c_void],
+        data_pointers: &mut [&mut CudaSlice<T>],
     ) -> Result<Self, CudnnError> {
+        let mut p = data_pointers
+            .into_iter()
+            .map(|x| *x.device_ptr_mut() as *mut std::ffi::c_void)
+            .collect::<Vec<_>>();
+
         backend_set_attribute(
             self.descriptor,
             cudnnBackendAttributeName_t::CUDNN_ATTR_VARIANT_PACK_DATA_POINTERS,
             cudnnBackendAttributeType_t::CUDNN_TYPE_VOID_PTR,
             data_pointers.len() as i64,
-            data_pointers.as_ptr() as *const std::ffi::c_void,
+            p.as_mut_ptr() as *mut std::ffi::c_void,
         )?;
         Ok(self)
     }

@@ -1,15 +1,15 @@
 // follow the example in https://docs.nvidia.com/deeplearning/cudnn/latest/developer/graph-api.html
 
-use cudarc::cudnn::result::create_handle;
+use cudarc::cudnn::result::{backend_execute, create_handle};
 use cudarc::cudnn::sys::cudnnDataType_t;
 
-use cudarc::cudnn::sys::{self, lib};
+use cudarc::cudnn::sys;
 use cudarc::cudnn::{
     BackendTensorDescriptor, BackendTensorDescriptorBuilder, EngineConfigDescriptorBuilder,
     EngineDescriptorBuilder, ExecutionPlanDescriptorBuilder, OperationGraphDescriptorBuilder,
     OperationPointwiseDescriptorBuilder, PointwiseDescriptorBuilder, VariantPackDescriptorBuilder,
 };
-use cudarc::driver::{CudaDevice, DevicePtrMut};
+use cudarc::driver::CudaDevice;
 
 fn create_tensor_descriptor(
     dim: &[i64],
@@ -58,55 +58,50 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let workspace_size = graph_desc.get_workspace_size()?;
     dbg!(workspace_size);
 
-    // engine config
     let engine_desc = EngineDescriptorBuilder::new()?
         .set_operation_graph(&graph_desc)?
         .set_global_index(1)?
         .finalize()?;
-
     let engcfg = EngineConfigDescriptorBuilder::new()?
         .set_engine(&engine_desc)?
         .finalize()?;
 
-    // execution plan
     let plan = ExecutionPlanDescriptorBuilder::new()?
         .set_handle(&handle)?
         .set_engine_config(&engcfg)?
         .finalize()?;
-
     let workspace_size = plan.get_workspace_size()?;
     dbg!(workspace_size);
 
-
-    // variant pack descriptor
+    // Allocate CUDA memory
     let uids = [1, 2, 3];
     let dev = CudaDevice::new(0)?;
     let mut b = dev.alloc_zeros::<f32>(2)?;
-    dev.htod_copy_into(vec![3.0; 2], &mut b)?;
     let mut c = dev.alloc_zeros::<f32>(2)?;
-    dev.htod_copy_into(vec![2.0; 2], &mut c)?;
     let mut d = dev.alloc_zeros::<f32>(2)?;
-    dev.htod_copy_into(vec![0.0; 2], &mut d)?;
     let mut workspace = dev.alloc_zeros::<f32>(2)?;
+    dev.htod_copy_into(vec![3.0; 2], &mut b)?;
+    dev.htod_copy_into(vec![2.0; 2], &mut c)?;
+    dev.htod_copy_into(vec![0.0; 2], &mut d)?;
     dev.htod_copy_into(vec![0.0; 2], &mut workspace)?;
 
-    let dev_ptrs = [
-        *b.device_ptr_mut() as *mut std::ffi::c_void,
-        *c.device_ptr_mut() as *mut std::ffi::c_void,
-        *d.device_ptr_mut() as *mut std::ffi::c_void,
-    ];
-
+    let mut dev_ptrs = [&mut b, &mut c, &mut d];
     let variant_pack_desc = VariantPackDescriptorBuilder::new()?
         .set_unique_ids(&uids)?
-        .set_workspace(workspace)?
-        .set_data_pointers(&dev_ptrs)?
+        .set_workspace(&mut workspace)?
+        .set_data_pointers(&mut dev_ptrs)?
         .finalize()?;
 
-    unsafe {
-        lib().cudnnBackendExecute(handle, plan.descriptor, variant_pack_desc.descriptor);
-    }
+    // run the graph
+    backend_execute(handle, plan.descriptor, variant_pack_desc.descriptor)?;
+    let mut d_host = vec![0.0; 2];
+    dev.dtoh_sync_copy_into(&d, &mut d_host)?;
+    dbg!(&d_host);
 
-    let d_host = dev.sync_reclaim(d)?;
+    // run the graph again
+    dev.htod_copy_into(vec![4.0; 2], &mut b)?;
+    backend_execute(handle, plan.descriptor, variant_pack_desc.descriptor)?;
+    dev.dtoh_sync_copy_into(&d, &mut d_host)?;
     dbg!(d_host);
 
     Ok(())
