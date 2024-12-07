@@ -8,7 +8,8 @@ use crate::{
         },
         sys::{
             cudnnBackendAttributeName_t, cudnnBackendAttributeType_t, cudnnBackendDescriptorType_t,
-            cudnnBackendDescriptor_t, cudnnDataType_t, cudnnHandle_t, cudnnPointwiseMode_t,
+            cudnnBackendDescriptor_t, cudnnBackendHeurMode_t, cudnnBackendKnobType_t,
+            cudnnDataType_t, cudnnHandle_t, cudnnPointwiseMode_t,
         },
     },
     driver::{CudaSlice, DevicePtr, DevicePtrMut},
@@ -363,6 +364,39 @@ impl EngineConfigDescriptorBuilder {
     }
 }
 
+impl EngineConfigDescriptor {
+    pub fn get_knob_choices(&self) -> Result<Vec<KnobChoiceDescriptor>, CudnnError> {
+        let mut count: MaybeUninit<i64> = MaybeUninit::uninit();
+        backend_get_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_ENGINECFG_KNOB_CHOICES,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
+            0,
+            count.as_mut_ptr(),
+            std::ptr::null_mut(),
+        )?;
+        let count_i64 = unsafe { count.assume_init() };
+
+        let mut descriptors: Vec<cudnnBackendDescriptor_t> =
+            vec![std::ptr::null_mut(); count_i64 as usize];
+        backend_get_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_ENGINECFG_KNOB_CHOICES,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
+            count_i64,
+            count.as_mut_ptr(),
+            descriptors.as_mut_ptr() as *mut std::ffi::c_void,
+        )?;
+
+        let results = descriptors
+            .into_iter()
+            .map(|desc| KnobChoiceDescriptor { descriptor: desc })
+            .collect();
+
+        Ok(results)
+    }
+}
+
 pub struct ExecutionPlanDescriptorBuilder {
     descriptor: cudnnBackendDescriptor_t,
 }
@@ -490,5 +524,179 @@ impl VariantPackDescriptorBuilder {
         Ok(VariantPackDescriptor {
             descriptor: self.descriptor,
         })
+    }
+}
+
+pub struct EngineHeuristicsDescriptorBuilder {
+    descriptor: cudnnBackendDescriptor_t,
+}
+
+pub struct EngineHeuristicsDescriptor {
+    pub descriptor: cudnnBackendDescriptor_t,
+}
+
+impl EngineHeuristicsDescriptorBuilder {
+    pub fn new() -> Result<Self, CudnnError> {
+        let descriptor: cudnnBackendDescriptor_t = backend_create_descriptor(
+            cudnnBackendDescriptorType_t::CUDNN_BACKEND_ENGINEHEUR_DESCRIPTOR,
+        )?;
+        Ok(EngineHeuristicsDescriptorBuilder { descriptor })
+    }
+
+    pub fn set_operation_graph(
+        self,
+        graph_desc: &OperationGraphDescriptor,
+    ) -> Result<Self, CudnnError> {
+        backend_set_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_ENGINEHEUR_OPERATION_GRAPH,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
+            1,
+            &(graph_desc.descriptor) as *const cudnnBackendDescriptor_t as *const std::ffi::c_void,
+        )?;
+        Ok(self)
+    }
+
+    pub fn set_mode(self, mode: &cudnnBackendHeurMode_t) -> Result<Self, CudnnError> {
+        backend_set_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_ENGINEHEUR_MODE,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_HEUR_MODE,
+            1,
+            mode as *const cudnnBackendHeurMode_t as *const std::ffi::c_void,
+        )?;
+        Ok(self)
+    }
+
+    pub fn set_sm_count_target(self, sm_count: i32) -> Result<Self, CudnnError> {
+        backend_set_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_ENGINEHEUR_SM_COUNT_TARGET,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_INT32,
+            1,
+            &sm_count as *const i32 as *const std::ffi::c_void,
+        )?;
+        Ok(self)
+    }
+
+    pub fn finalize(self) -> Result<EngineHeuristicsDescriptor, CudnnError> {
+        backend_finalize(self.descriptor)?;
+        Ok(EngineHeuristicsDescriptor {
+            descriptor: self.descriptor,
+        })
+    }
+}
+
+impl EngineHeuristicsDescriptor {
+    pub fn get_results(&self) -> Result<Vec<EngineConfigDescriptor>, CudnnError> {
+
+        let n =0;
+
+        let mut count: MaybeUninit<i64> = MaybeUninit::uninit();
+        let mut descriptors: Vec<cudnnBackendDescriptor_t> =
+            vec![std::ptr::null_mut(); n as usize];
+
+        backend_get_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_ENGINEHEUR_RESULTS,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
+            n,
+            count.as_mut_ptr(),
+            descriptors.as_mut_ptr() as *mut std::ffi::c_void,
+        )?;
+        let count_i64 = unsafe { count.assume_init() };
+        dbg!(count_i64);
+
+        let mut descriptors: Vec<cudnnBackendDescriptor_t> =
+            vec![std::ptr::null_mut(); count_i64 as usize];
+        backend_get_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_ENGINEHEUR_RESULTS,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
+            count_i64,
+            count.as_mut_ptr(),
+            descriptors.as_mut_ptr() as *mut std::ffi::c_void,
+        )?;
+
+        let results = descriptors
+            .into_iter()
+            .map(|desc| EngineConfigDescriptor { descriptor: desc })
+            .collect();
+
+        Ok(results)
+    }
+}
+
+pub struct KnobChoiceDescriptorBuilder {
+    descriptor: cudnnBackendDescriptor_t,
+}
+
+pub struct KnobChoiceDescriptor {
+    pub descriptor: cudnnBackendDescriptor_t,
+}
+
+impl KnobChoiceDescriptorBuilder {
+    pub fn new() -> Result<Self, CudnnError> {
+        let descriptor: cudnnBackendDescriptor_t = backend_create_descriptor(
+            cudnnBackendDescriptorType_t::CUDNN_BACKEND_KNOB_CHOICE_DESCRIPTOR,
+        )?;
+        Ok(KnobChoiceDescriptorBuilder { descriptor })
+    }
+
+    pub fn set_knob_type(self, knob_type: cudnnBackendKnobType_t) -> Result<Self, CudnnError> {
+        backend_set_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_KNOB_CHOICE_KNOB_TYPE,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_KNOB_TYPE,
+            1,
+            &knob_type as *const cudnnBackendKnobType_t as *const std::ffi::c_void,
+        )?;
+        Ok(self)
+    }
+
+    pub fn set_knob_value(self, knob_value: i64) -> Result<Self, CudnnError> {
+        backend_set_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_KNOB_CHOICE_KNOB_VALUE,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_INT64,
+            1,
+            &knob_value as *const i64 as *const std::ffi::c_void,
+        )?;
+        Ok(self)
+    }
+
+    pub fn finalize(self) -> Result<KnobChoiceDescriptor, CudnnError> {
+        backend_finalize(self.descriptor)?;
+        Ok(KnobChoiceDescriptor {
+            descriptor: self.descriptor,
+        })
+    }
+}
+
+impl KnobChoiceDescriptor {
+    pub fn get_knob_type(&self) -> Result<cudnnBackendKnobType_t, CudnnError> {
+        let mut knob_type: MaybeUninit<cudnnBackendKnobType_t> = MaybeUninit::uninit();
+        backend_get_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_KNOB_CHOICE_KNOB_TYPE,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_KNOB_TYPE,
+            1,
+            std::ptr::null_mut(),
+            knob_type.as_mut_ptr() as *mut std::ffi::c_void,
+        )?;
+        Ok(unsafe { knob_type.assume_init() })
+    }
+
+    pub fn get_knob_value(&self) -> Result<i64, CudnnError> {
+        let mut knob_value: MaybeUninit<i64> = MaybeUninit::uninit();
+        backend_get_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_KNOB_CHOICE_KNOB_VALUE,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_INT64,
+            1,
+            std::ptr::null_mut(),
+            knob_value.as_mut_ptr() as *mut std::ffi::c_void,
+        )?;
+        Ok(unsafe { knob_value.assume_init() })
     }
 }

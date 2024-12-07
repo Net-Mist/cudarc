@@ -1,9 +1,9 @@
 // follow the example in https://docs.nvidia.com/deeplearning/cudnn/latest/developer/graph-api.html
 
 use cudarc::cudnn::result::{backend_execute, create_handle};
-use cudarc::cudnn::sys::cudnnDataType_t;
+use cudarc::cudnn::sys::{cudnnBackendHeurMode_t, cudnnDataType_t};
 
-use cudarc::cudnn::sys;
+use cudarc::cudnn::{sys, EngineHeuristicsDescriptorBuilder};
 use cudarc::cudnn::{
     BackendTensorDescriptor, BackendTensorDescriptorBuilder, EngineConfigDescriptorBuilder,
     EngineDescriptorBuilder, ExecutionPlanDescriptorBuilder, OperationGraphDescriptorBuilder,
@@ -58,10 +58,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let workspace_size = graph_desc.get_workspace_size()?;
     dbg!(workspace_size);
 
+
+    let heuristics_desc = EngineHeuristicsDescriptorBuilder::new()?
+        .set_operation_graph(&graph_desc)?
+        .set_mode(&cudnnBackendHeurMode_t::CUDNN_HEUR_MODE_A)?
+        .finalize()?
+        .get_results()?;
+
+    dbg!(&heuristics_desc.len());
+
     let engine_desc = EngineDescriptorBuilder::new()?
         .set_operation_graph(&graph_desc)?
         .set_global_index(1)?
         .finalize()?;
+
     let engcfg = EngineConfigDescriptorBuilder::new()?
         .set_engine(&engine_desc)?
         .finalize()?;
