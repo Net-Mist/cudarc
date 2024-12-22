@@ -9,7 +9,7 @@ use crate::{
         sys::{
             cudnnBackendAttributeName_t, cudnnBackendAttributeType_t, cudnnBackendDescriptorType_t,
             cudnnBackendDescriptor_t, cudnnBackendHeurMode_t, cudnnBackendKnobType_t,
-            cudnnDataType_t, cudnnHandle_t, cudnnPointwiseMode_t,
+            cudnnBackendNumericalNote_t, cudnnDataType_t, cudnnHandle_t, cudnnPointwiseMode_t,
         },
     },
     driver::{CudaSlice, DevicePtr, DevicePtrMut},
@@ -17,8 +17,227 @@ use crate::{
 
 use super::{Cudnn, CudnnError};
 
-pub struct BackendTensorDescriptorBuilder {
+pub trait Descriptor: Sized {
+    fn new() -> Result<Self, CudnnError>;
+    fn from_descriptor(descriptor: cudnnBackendDescriptor_t) -> Self;
+    fn get_descriptor(&self) -> cudnnBackendDescriptor_t;
+}
+
+pub trait Builder<T>: Sized {
+    fn new() -> Result<Self, CudnnError>;
+    fn finalize(self) -> Result<T, CudnnError>;
+    fn get_descriptor(&self) -> cudnnBackendDescriptor_t;
+
+    fn new_descriptor() -> Result<cudnnBackendDescriptor_t, CudnnError> {
+        let descriptor = Self::new()?;
+        Ok(descriptor.get_descriptor())
+    }
+}
+
+macro_rules! impl_builder {
+    ($builder:ident, $descriptor:ident, $backend_type:expr) => {
+        impl Builder<$descriptor> for $builder {
+            fn new() -> Result<Self, CudnnError> {
+                let descriptor: cudnnBackendDescriptor_t =
+                    backend_create_descriptor($backend_type)?;
+                Ok($builder { descriptor })
+            }
+
+            fn finalize(self) -> Result<$descriptor, CudnnError> {
+                backend_finalize(self.descriptor)?;
+                Ok($descriptor {
+                    descriptor: self.descriptor,
+                })
+            }
+
+            fn get_descriptor(&self) -> cudnnBackendDescriptor_t {
+                self.descriptor
+            }
+        }
+
+        impl Descriptor for $descriptor {
+            fn new() -> Result<Self, CudnnError> {
+                let descriptor: cudnnBackendDescriptor_t =
+                    backend_create_descriptor($backend_type)?;
+                Ok($descriptor { descriptor })
+            }
+
+            fn from_descriptor(descriptor: cudnnBackendDescriptor_t) -> Self {
+                $descriptor { descriptor }
+            }
+
+            fn get_descriptor(&self) -> cudnnBackendDescriptor_t {
+                self.descriptor
+            }
+        }
+    };
+}
+
+// Apply the macro to implement the Builder and Descriptor traits for various descriptor types
+impl_builder!(
+    BackendTensorDescriptorBuilder,
+    BackendTensorDescriptor,
+    cudnnBackendDescriptorType_t::CUDNN_BACKEND_TENSOR_DESCRIPTOR
+);
+impl_builder!(
+    PointwiseDescriptorBuilder,
+    PointwiseDescriptor,
+    cudnnBackendDescriptorType_t::CUDNN_BACKEND_POINTWISE_DESCRIPTOR
+);
+impl_builder!(
+    OperationPointwiseDescriptorBuilder,
+    OperationPointwiseDescriptor,
+    cudnnBackendDescriptorType_t::CUDNN_BACKEND_OPERATION_POINTWISE_DESCRIPTOR
+);
+impl_builder!(
+    OperationGraphDescriptorBuilder,
+    OperationGraphDescriptor,
+    cudnnBackendDescriptorType_t::CUDNN_BACKEND_OPERATIONGRAPH_DESCRIPTOR
+);
+impl_builder!(
+    EngineDescriptorBuilder,
+    EngineDescriptor,
+    cudnnBackendDescriptorType_t::CUDNN_BACKEND_ENGINE_DESCRIPTOR
+);
+impl_builder!(
+    EngineConfigDescriptorBuilder,
+    EngineConfigDescriptor,
+    cudnnBackendDescriptorType_t::CUDNN_BACKEND_ENGINECFG_DESCRIPTOR
+);
+impl_builder!(
+    ExecutionPlanDescriptorBuilder,
+    ExecutionPlanDescriptor,
+    cudnnBackendDescriptorType_t::CUDNN_BACKEND_EXECUTION_PLAN_DESCRIPTOR
+);
+impl_builder!(
+    VariantPackDescriptorBuilder,
+    VariantPackDescriptor,
+    cudnnBackendDescriptorType_t::CUDNN_BACKEND_VARIANT_PACK_DESCRIPTOR
+);
+impl_builder!(
+    EngineHeuristicsDescriptorBuilder,
+    EngineHeuristicsDescriptor,
+    cudnnBackendDescriptorType_t::CUDNN_BACKEND_ENGINEHEUR_DESCRIPTOR
+);
+impl_builder!(
+    KnobChoiceDescriptorBuilder,
+    KnobChoiceDescriptor,
+    cudnnBackendDescriptorType_t::CUDNN_BACKEND_KNOB_CHOICE_DESCRIPTOR
+);
+impl_builder!(
+    MatmulDescriptorBuilder,
+    MatmulDescriptor,
+    cudnnBackendDescriptorType_t::CUDNN_BACKEND_MATMUL_DESCRIPTOR
+);
+impl_builder!(
+    OperationMatmulDescriptorBuilder,
+    OperationMatmulDescriptor,
+    cudnnBackendDescriptorType_t::CUDNN_BACKEND_OPERATION_MATMUL_DESCRIPTOR
+);
+
+fn get_attributes<T: Descriptor, U: Builder<T>>(
     descriptor: cudnnBackendDescriptor_t,
+    attribute_name: cudnnBackendAttributeName_t,
+    attribute_type: cudnnBackendAttributeType_t,
+    max_count: i64,
+) -> Result<Vec<T>, CudnnError> {
+    let mut count = MaybeUninit::uninit();
+    let mut descriptors = Vec::with_capacity(max_count as usize);
+    for _ in 0..max_count {
+        descriptors.push(U::new_descriptor()?);
+    }
+
+    backend_get_attribute(
+        descriptor,
+        attribute_name,
+        attribute_type,
+        max_count,
+        count.as_mut_ptr(),
+        descriptors.as_mut_ptr() as *mut std::ffi::c_void,
+    )?;
+    let count_i64 = unsafe { count.assume_init() };
+    let results = descriptors
+        .drain(..count_i64 as usize)
+        .into_iter()
+        .map(|desc| T::from_descriptor(desc))
+        .collect();
+
+    Ok(results)
+}
+
+fn get_attribute<T: Descriptor, U: Builder<T>>(
+    descriptor: cudnnBackendDescriptor_t,
+    attribute_name: cudnnBackendAttributeName_t,
+    attribute_type: cudnnBackendAttributeType_t,
+) -> Result<T, CudnnError> {
+    let mut count = MaybeUninit::uninit();
+    let mut descriptors = Vec::with_capacity(1 as usize);
+    for _ in 0..1 {
+        descriptors.push(U::new_descriptor()?);
+    }
+
+    backend_get_attribute(
+        descriptor,
+        attribute_name,
+        attribute_type,
+        1,
+        count.as_mut_ptr(),
+        descriptors.as_mut_ptr() as *mut std::ffi::c_void,
+    )?;
+    let count_i64 = unsafe { count.assume_init() };
+    Ok(T::from_descriptor(descriptors[0]))
+}
+fn get_basic_attributes<T>(
+    descriptor: cudnnBackendDescriptor_t,
+    attribute_name: cudnnBackendAttributeName_t,
+    attribute_type: cudnnBackendAttributeType_t,
+    max_count: i64,
+) -> Result<Vec<T>, CudnnError> {
+    let mut count = MaybeUninit::uninit();
+    let mut descriptors = Vec::with_capacity(max_count as usize);
+    for _ in 0..max_count {
+        descriptors.push(MaybeUninit::uninit());
+    }
+
+    backend_get_attribute(
+        descriptor,
+        attribute_name,
+        attribute_type,
+        max_count,
+        count.as_mut_ptr(),
+        descriptors.as_mut_ptr() as *mut std::ffi::c_void,
+    )?;
+    let count_i64 = unsafe { count.assume_init() };
+    let results = descriptors
+        .drain(..count_i64 as usize)
+        .into_iter()
+        .map(|desc| unsafe { desc.assume_init() })
+        .collect();
+
+    Ok(results)
+}
+
+
+fn get_basic_attribute<T>(
+    descriptor: cudnnBackendDescriptor_t,
+    attribute_name: cudnnBackendAttributeName_t,
+    attribute_type: cudnnBackendAttributeType_t,
+) -> Result<T, CudnnError> {
+    let mut count = MaybeUninit::uninit();
+    let mut element = MaybeUninit::uninit();
+    backend_get_attribute(
+        descriptor,
+        attribute_name,
+        attribute_type,
+        1,
+        count.as_mut_ptr(),
+        element.as_mut_ptr() as *mut std::ffi::c_void,
+    )?;
+    Ok(unsafe { element.assume_init() })
+}
+
+pub struct BackendTensorDescriptorBuilder {
+    pub descriptor: cudnnBackendDescriptor_t,
 }
 
 pub struct BackendTensorDescriptor {
@@ -26,14 +245,7 @@ pub struct BackendTensorDescriptor {
 }
 
 impl BackendTensorDescriptorBuilder {
-    pub fn new() -> Result<Self, CudnnError> {
-        let descriptor: cudnnBackendDescriptor_t = backend_create_descriptor(
-            cudnnBackendDescriptorType_t::CUDNN_BACKEND_TENSOR_DESCRIPTOR,
-        )?;
-        Ok(BackendTensorDescriptorBuilder { descriptor })
-    }
-
-    pub fn set_tensor_unique_id(self, id: i64) -> Result<Self, CudnnError> {
+    pub fn set_unique_id(self, id: i64) -> Result<Self, CudnnError> {
         backend_set_attribute(
             self.descriptor,
             cudnnBackendAttributeName_t::CUDNN_ATTR_TENSOR_UNIQUE_ID,
@@ -44,7 +256,7 @@ impl BackendTensorDescriptorBuilder {
         Ok(self)
     }
 
-    pub fn set_tensor_data_type(self, data_type: &cudnnDataType_t) -> Result<Self, CudnnError> {
+    pub fn set_data_type(self, data_type: &cudnnDataType_t) -> Result<Self, CudnnError> {
         backend_set_attribute(
             self.descriptor,
             cudnnBackendAttributeName_t::CUDNN_ATTR_TENSOR_DATA_TYPE,
@@ -55,7 +267,7 @@ impl BackendTensorDescriptorBuilder {
         Ok(self)
     }
 
-    pub fn set_tensor_dimensions(self, dim: &[i64]) -> Result<Self, CudnnError> {
+    pub fn set_dimensions(self, dim: &[i64]) -> Result<Self, CudnnError> {
         backend_set_attribute(
             self.descriptor,
             cudnnBackendAttributeName_t::CUDNN_ATTR_TENSOR_DIMENSIONS,
@@ -66,7 +278,7 @@ impl BackendTensorDescriptorBuilder {
         Ok(self)
     }
 
-    pub fn set_tensor_strides(self, strides: &[i64]) -> Result<Self, CudnnError> {
+    pub fn set_strides(self, strides: &[i64]) -> Result<Self, CudnnError> {
         backend_set_attribute(
             self.descriptor,
             cudnnBackendAttributeName_t::CUDNN_ATTR_TENSOR_STRIDES,
@@ -77,7 +289,7 @@ impl BackendTensorDescriptorBuilder {
         Ok(self)
     }
 
-    pub fn set_tensor_byte_alignment(self, alignment: i64) -> Result<Self, CudnnError> {
+    pub fn set_byte_alignment(self, alignment: i64) -> Result<Self, CudnnError> {
         backend_set_attribute(
             self.descriptor,
             cudnnBackendAttributeName_t::CUDNN_ATTR_TENSOR_BYTE_ALIGNMENT,
@@ -88,16 +300,20 @@ impl BackendTensorDescriptorBuilder {
         Ok(self)
     }
 
-    pub fn finalize(self) -> Result<BackendTensorDescriptor, CudnnError> {
-        backend_finalize(self.descriptor)?;
-        Ok(BackendTensorDescriptor {
-            descriptor: self.descriptor,
-        })
+    pub fn set_is_virtual(self, is_virtual: bool) -> Result<Self, CudnnError> {
+        backend_set_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_TENSOR_IS_VIRTUAL,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_BOOLEAN,
+            1,
+            &(is_virtual) as *const bool as *const std::ffi::c_void,
+        )?;
+        Ok(self)
     }
 }
 
 pub struct PointwiseDescriptorBuilder {
-    descriptor: cudnnBackendDescriptor_t,
+    pub descriptor: cudnnBackendDescriptor_t,
 }
 
 pub struct PointwiseDescriptor {
@@ -105,13 +321,6 @@ pub struct PointwiseDescriptor {
 }
 
 impl PointwiseDescriptorBuilder {
-    pub fn new() -> Result<Self, CudnnError> {
-        let descriptor: cudnnBackendDescriptor_t = backend_create_descriptor(
-            cudnnBackendDescriptorType_t::CUDNN_BACKEND_POINTWISE_DESCRIPTOR,
-        )?;
-        Ok(PointwiseDescriptorBuilder { descriptor })
-    }
-
     pub fn set_mode(self, mode: cudnnPointwiseMode_t) -> Result<Self, CudnnError> {
         backend_set_attribute(
             self.descriptor,
@@ -122,17 +331,10 @@ impl PointwiseDescriptorBuilder {
         )?;
         Ok(self)
     }
-
-    pub fn finalize(self) -> Result<PointwiseDescriptor, CudnnError> {
-        backend_finalize(self.descriptor)?;
-        Ok(PointwiseDescriptor {
-            descriptor: self.descriptor,
-        })
-    }
 }
 
 pub struct OperationPointwiseDescriptorBuilder {
-    descriptor: cudnnBackendDescriptor_t,
+    pub descriptor: cudnnBackendDescriptor_t,
 }
 
 pub struct OperationPointwiseDescriptor {
@@ -140,13 +342,6 @@ pub struct OperationPointwiseDescriptor {
 }
 
 impl OperationPointwiseDescriptorBuilder {
-    pub fn new() -> Result<Self, CudnnError> {
-        let descriptor: cudnnBackendDescriptor_t = backend_create_descriptor(
-            cudnnBackendDescriptorType_t::CUDNN_BACKEND_OPERATION_POINTWISE_DESCRIPTOR,
-        )?;
-        Ok(OperationPointwiseDescriptorBuilder { descriptor })
-    }
-
     pub fn set_pw_descriptor(
         self,
         op_descriptor: &PointwiseDescriptor,
@@ -207,16 +402,20 @@ impl OperationPointwiseDescriptorBuilder {
         Ok(self)
     }
 
-    pub fn finalize(self) -> Result<OperationPointwiseDescriptor, CudnnError> {
-        backend_finalize(self.descriptor)?;
-        Ok(OperationPointwiseDescriptor {
-            descriptor: self.descriptor,
-        })
+    pub fn set_math_prec(self, math_prec: &cudnnDataType_t) -> Result<Self, CudnnError> {
+        backend_set_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_POINTWISE_MATH_PREC,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_DATA_TYPE,
+            1,
+            math_prec as *const cudnnDataType_t as *const std::ffi::c_void,
+        )?;
+        Ok(self)
     }
 }
 
 pub struct OperationGraphDescriptorBuilder {
-    descriptor: cudnnBackendDescriptor_t,
+    pub descriptor: cudnnBackendDescriptor_t,
 }
 
 pub struct OperationGraphDescriptor {
@@ -224,13 +423,6 @@ pub struct OperationGraphDescriptor {
 }
 
 impl OperationGraphDescriptorBuilder {
-    pub fn new() -> Result<Self, CudnnError> {
-        let descriptor: cudnnBackendDescriptor_t = backend_create_descriptor(
-            cudnnBackendDescriptorType_t::CUDNN_BACKEND_OPERATIONGRAPH_DESCRIPTOR,
-        )?;
-        Ok(OperationGraphDescriptorBuilder { descriptor })
-    }
-
     pub fn set_ops_pointwise(
         self,
         fprop: &OperationPointwiseDescriptor,
@@ -245,6 +437,32 @@ impl OperationGraphDescriptorBuilder {
         Ok(self)
     }
 
+    pub fn set_ops_matmul(self, matmul: &OperationMatmulDescriptor) -> Result<Self, CudnnError> {
+        backend_set_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_OPERATIONGRAPH_OPS,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
+            1,
+            &(matmul.descriptor) as *const _ as *const std::ffi::c_void,
+        )?;
+        Ok(self)
+    }
+
+    pub fn set_ops(self, matmul: &OperationMatmulDescriptor, pointwises: &[&OperationPointwiseDescriptor]) -> Result<Self, CudnnError> {
+        let mut elements = vec![matmul.descriptor]
+            .into_iter()
+            .chain(pointwises.iter().map(|x| x.descriptor))
+            .collect::<Vec<_>>();
+        backend_set_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_OPERATIONGRAPH_OPS,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
+            1 + pointwises.len() as i64,
+            elements.as_mut_ptr() as *const std::ffi::c_void,
+        )?;
+        Ok(self)
+    }
+
     pub fn set_handle(self, handle: &cudnnHandle_t) -> Result<Self, CudnnError> {
         backend_set_attribute(
             self.descriptor,
@@ -255,33 +473,21 @@ impl OperationGraphDescriptorBuilder {
         )?;
         Ok(self)
     }
-
-    pub fn finalize(self) -> Result<OperationGraphDescriptor, CudnnError> {
-        backend_finalize(self.descriptor)?;
-        Ok(OperationGraphDescriptor {
-            descriptor: self.descriptor,
-        })
-    }
 }
 
 impl OperationGraphDescriptor {
-    pub fn get_workspace_size(&self) -> Result<i64, CudnnError> {
-        let mut workspace_size: MaybeUninit<i64> = MaybeUninit::uninit();
-        let mut element_count: MaybeUninit<i64> = MaybeUninit::uninit();
-        backend_get_attribute(
+    pub fn get_engine_glocal_count(&self) -> Result<i64, CudnnError> {
+        get_basic_attribute(
             self.descriptor,
             cudnnBackendAttributeName_t::CUDNN_ATTR_OPERATIONGRAPH_ENGINE_GLOBAL_COUNT,
             cudnnBackendAttributeType_t::CUDNN_TYPE_INT64,
-            1,
-            element_count.as_mut_ptr(),
-            workspace_size.as_mut_ptr() as *mut std::ffi::c_void,
-        )?;
-        Ok(unsafe { workspace_size.assume_init() })
+        )
     }
+
 }
 
 pub struct EngineDescriptorBuilder {
-    descriptor: cudnnBackendDescriptor_t,
+    pub descriptor: cudnnBackendDescriptor_t,
 }
 
 pub struct EngineDescriptor {
@@ -289,13 +495,6 @@ pub struct EngineDescriptor {
 }
 
 impl EngineDescriptorBuilder {
-    pub fn new() -> Result<Self, CudnnError> {
-        let descriptor: cudnnBackendDescriptor_t = backend_create_descriptor(
-            cudnnBackendDescriptorType_t::CUDNN_BACKEND_ENGINE_DESCRIPTOR,
-        )?;
-        Ok(EngineDescriptorBuilder { descriptor })
-    }
-
     pub fn set_operation_graph(
         self,
         graph_desc: &OperationGraphDescriptor,
@@ -320,17 +519,29 @@ impl EngineDescriptorBuilder {
         )?;
         Ok(self)
     }
+}
 
-    pub fn finalize(self) -> Result<EngineDescriptor, CudnnError> {
-        backend_finalize(self.descriptor)?;
-        Ok(EngineDescriptor {
-            descriptor: self.descriptor,
-        })
+impl EngineDescriptor {
+    pub fn get_global_index(&self) -> Result<i64, CudnnError> {
+        get_basic_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_ENGINE_GLOBAL_INDEX,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_INT64,
+        )
+    }
+
+    pub fn get_numerical_note(&self) -> Result<Vec<cudnnBackendNumericalNote_t>, CudnnError> {
+        get_basic_attributes(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_ENGINE_NUMERICAL_NOTE,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_NUMERICAL_NOTE,
+            10
+        )
     }
 }
 
 pub struct EngineConfigDescriptorBuilder {
-    descriptor: cudnnBackendDescriptor_t,
+    pub descriptor: cudnnBackendDescriptor_t,
 }
 
 pub struct EngineConfigDescriptor {
@@ -338,13 +549,6 @@ pub struct EngineConfigDescriptor {
 }
 
 impl EngineConfigDescriptorBuilder {
-    pub fn new() -> Result<Self, CudnnError> {
-        let descriptor: cudnnBackendDescriptor_t = backend_create_descriptor(
-            cudnnBackendDescriptorType_t::CUDNN_BACKEND_ENGINECFG_DESCRIPTOR,
-        )?;
-        Ok(EngineConfigDescriptorBuilder { descriptor })
-    }
-
     pub fn set_engine(self, engine_desc: &EngineDescriptor) -> Result<Self, CudnnError> {
         backend_set_attribute(
             self.descriptor,
@@ -355,50 +559,32 @@ impl EngineConfigDescriptorBuilder {
         )?;
         Ok(self)
     }
-
-    pub fn finalize(self) -> Result<EngineConfigDescriptor, CudnnError> {
-        backend_finalize(self.descriptor)?;
-        Ok(EngineConfigDescriptor {
-            descriptor: self.descriptor,
-        })
-    }
 }
 
 impl EngineConfigDescriptor {
-    pub fn get_knob_choices(&self) -> Result<Vec<KnobChoiceDescriptor>, CudnnError> {
-        let mut count: MaybeUninit<i64> = MaybeUninit::uninit();
-        backend_get_attribute(
+    pub fn get_engine(&self) -> Result<EngineDescriptor, CudnnError> {
+        get_attribute::<EngineDescriptor, EngineDescriptorBuilder>(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_ENGINECFG_ENGINE,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
+        )
+    }
+
+    pub fn get_knob_choices(
+        &self,
+        max_n_knobs: i64,
+    ) -> Result<Vec<KnobChoiceDescriptor>, CudnnError> {
+        get_attributes::<KnobChoiceDescriptor, KnobChoiceDescriptorBuilder>(
             self.descriptor,
             cudnnBackendAttributeName_t::CUDNN_ATTR_ENGINECFG_KNOB_CHOICES,
             cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
-            0,
-            count.as_mut_ptr(),
-            std::ptr::null_mut(),
-        )?;
-        let count_i64 = unsafe { count.assume_init() };
-
-        let mut descriptors: Vec<cudnnBackendDescriptor_t> =
-            vec![std::ptr::null_mut(); count_i64 as usize];
-        backend_get_attribute(
-            self.descriptor,
-            cudnnBackendAttributeName_t::CUDNN_ATTR_ENGINECFG_KNOB_CHOICES,
-            cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
-            count_i64,
-            count.as_mut_ptr(),
-            descriptors.as_mut_ptr() as *mut std::ffi::c_void,
-        )?;
-
-        let results = descriptors
-            .into_iter()
-            .map(|desc| KnobChoiceDescriptor { descriptor: desc })
-            .collect();
-
-        Ok(results)
+            max_n_knobs,
+        )
     }
 }
 
 pub struct ExecutionPlanDescriptorBuilder {
-    descriptor: cudnnBackendDescriptor_t,
+    pub descriptor: cudnnBackendDescriptor_t,
 }
 
 pub struct ExecutionPlanDescriptor {
@@ -406,13 +592,6 @@ pub struct ExecutionPlanDescriptor {
 }
 
 impl ExecutionPlanDescriptorBuilder {
-    pub fn new() -> Result<Self, CudnnError> {
-        let descriptor: cudnnBackendDescriptor_t = backend_create_descriptor(
-            cudnnBackendDescriptorType_t::CUDNN_BACKEND_EXECUTION_PLAN_DESCRIPTOR,
-        )?;
-        Ok(ExecutionPlanDescriptorBuilder { descriptor })
-    }
-
     pub fn set_handle(mut self, handle: &cudnnHandle_t) -> Result<Self, CudnnError> {
         backend_set_attribute(
             self.descriptor,
@@ -437,33 +616,20 @@ impl ExecutionPlanDescriptorBuilder {
         )?;
         Ok(self)
     }
-
-    pub fn finalize(self) -> Result<ExecutionPlanDescriptor, CudnnError> {
-        backend_finalize(self.descriptor)?;
-        Ok(ExecutionPlanDescriptor {
-            descriptor: self.descriptor,
-        })
-    }
 }
 
 impl ExecutionPlanDescriptor {
     pub fn get_workspace_size(&self) -> Result<i64, CudnnError> {
-        let mut workspace_size: MaybeUninit<i64> = MaybeUninit::uninit();
-        let mut element_count: MaybeUninit<i64> = MaybeUninit::uninit();
-        backend_get_attribute(
+        get_basic_attribute(
             self.descriptor,
             cudnnBackendAttributeName_t::CUDNN_ATTR_EXECUTION_PLAN_WORKSPACE_SIZE,
             cudnnBackendAttributeType_t::CUDNN_TYPE_INT64,
-            1,
-            element_count.as_mut_ptr(),
-            workspace_size.as_mut_ptr() as *mut std::ffi::c_void,
-        )?;
-        Ok(unsafe { workspace_size.assume_init() })
+        )
     }
 }
 
 pub struct VariantPackDescriptorBuilder {
-    descriptor: cudnnBackendDescriptor_t,
+    pub descriptor: cudnnBackendDescriptor_t,
 }
 
 pub struct VariantPackDescriptor {
@@ -471,13 +637,6 @@ pub struct VariantPackDescriptor {
 }
 
 impl VariantPackDescriptorBuilder {
-    pub fn new() -> Result<Self, CudnnError> {
-        let descriptor: cudnnBackendDescriptor_t = backend_create_descriptor(
-            cudnnBackendDescriptorType_t::CUDNN_BACKEND_VARIANT_PACK_DESCRIPTOR,
-        )?;
-        Ok(VariantPackDescriptorBuilder { descriptor })
-    }
-
     pub fn set_unique_ids(self, uids: &[i64]) -> Result<Self, CudnnError> {
         backend_set_attribute(
             self.descriptor,
@@ -518,17 +677,10 @@ impl VariantPackDescriptorBuilder {
         )?;
         Ok(self)
     }
-
-    pub fn finalize(self) -> Result<VariantPackDescriptor, CudnnError> {
-        backend_finalize(self.descriptor)?;
-        Ok(VariantPackDescriptor {
-            descriptor: self.descriptor,
-        })
-    }
 }
 
 pub struct EngineHeuristicsDescriptorBuilder {
-    descriptor: cudnnBackendDescriptor_t,
+    pub descriptor: cudnnBackendDescriptor_t,
 }
 
 pub struct EngineHeuristicsDescriptor {
@@ -536,13 +688,6 @@ pub struct EngineHeuristicsDescriptor {
 }
 
 impl EngineHeuristicsDescriptorBuilder {
-    pub fn new() -> Result<Self, CudnnError> {
-        let descriptor: cudnnBackendDescriptor_t = backend_create_descriptor(
-            cudnnBackendDescriptorType_t::CUDNN_BACKEND_ENGINEHEUR_DESCRIPTOR,
-        )?;
-        Ok(EngineHeuristicsDescriptorBuilder { descriptor })
-    }
-
     pub fn set_operation_graph(
         self,
         graph_desc: &OperationGraphDescriptor,
@@ -578,57 +723,24 @@ impl EngineHeuristicsDescriptorBuilder {
         )?;
         Ok(self)
     }
-
-    pub fn finalize(self) -> Result<EngineHeuristicsDescriptor, CudnnError> {
-        backend_finalize(self.descriptor)?;
-        Ok(EngineHeuristicsDescriptor {
-            descriptor: self.descriptor,
-        })
-    }
 }
 
 impl EngineHeuristicsDescriptor {
-    pub fn get_results(&self) -> Result<Vec<EngineConfigDescriptor>, CudnnError> {
-
-        let n =0;
-
-        let mut count: MaybeUninit<i64> = MaybeUninit::uninit();
-        let mut descriptors: Vec<cudnnBackendDescriptor_t> =
-            vec![std::ptr::null_mut(); n as usize];
-
-        backend_get_attribute(
+    pub fn get_results(
+        &self,
+        max_n_results: i64,
+    ) -> Result<Vec<EngineConfigDescriptor>, CudnnError> {
+        get_attributes::<EngineConfigDescriptor, EngineConfigDescriptorBuilder>(
             self.descriptor,
             cudnnBackendAttributeName_t::CUDNN_ATTR_ENGINEHEUR_RESULTS,
             cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
-            n,
-            count.as_mut_ptr(),
-            descriptors.as_mut_ptr() as *mut std::ffi::c_void,
-        )?;
-        let count_i64 = unsafe { count.assume_init() };
-        dbg!(count_i64);
-
-        let mut descriptors: Vec<cudnnBackendDescriptor_t> =
-            vec![std::ptr::null_mut(); count_i64 as usize];
-        backend_get_attribute(
-            self.descriptor,
-            cudnnBackendAttributeName_t::CUDNN_ATTR_ENGINEHEUR_RESULTS,
-            cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
-            count_i64,
-            count.as_mut_ptr(),
-            descriptors.as_mut_ptr() as *mut std::ffi::c_void,
-        )?;
-
-        let results = descriptors
-            .into_iter()
-            .map(|desc| EngineConfigDescriptor { descriptor: desc })
-            .collect();
-
-        Ok(results)
+            max_n_results,
+        )
     }
 }
 
 pub struct KnobChoiceDescriptorBuilder {
-    descriptor: cudnnBackendDescriptor_t,
+    pub descriptor: cudnnBackendDescriptor_t,
 }
 
 pub struct KnobChoiceDescriptor {
@@ -636,13 +748,6 @@ pub struct KnobChoiceDescriptor {
 }
 
 impl KnobChoiceDescriptorBuilder {
-    pub fn new() -> Result<Self, CudnnError> {
-        let descriptor: cudnnBackendDescriptor_t = backend_create_descriptor(
-            cudnnBackendDescriptorType_t::CUDNN_BACKEND_KNOB_CHOICE_DESCRIPTOR,
-        )?;
-        Ok(KnobChoiceDescriptorBuilder { descriptor })
-    }
-
     pub fn set_knob_type(self, knob_type: cudnnBackendKnobType_t) -> Result<Self, CudnnError> {
         backend_set_attribute(
             self.descriptor,
@@ -663,13 +768,6 @@ impl KnobChoiceDescriptorBuilder {
             &knob_value as *const i64 as *const std::ffi::c_void,
         )?;
         Ok(self)
-    }
-
-    pub fn finalize(self) -> Result<KnobChoiceDescriptor, CudnnError> {
-        backend_finalize(self.descriptor)?;
-        Ok(KnobChoiceDescriptor {
-            descriptor: self.descriptor,
-        })
     }
 }
 
@@ -698,5 +796,176 @@ impl KnobChoiceDescriptor {
             knob_value.as_mut_ptr() as *mut std::ffi::c_void,
         )?;
         Ok(unsafe { knob_value.assume_init() })
+    }
+}
+
+pub struct MatmulDescriptorBuilder {
+    pub descriptor: cudnnBackendDescriptor_t,
+}
+
+pub struct MatmulDescriptor {
+    pub descriptor: cudnnBackendDescriptor_t,
+}
+
+impl MatmulDescriptorBuilder {
+    pub fn new() -> Result<Self, CudnnError> {
+        let descriptor: cudnnBackendDescriptor_t = backend_create_descriptor(
+            cudnnBackendDescriptorType_t::CUDNN_BACKEND_MATMUL_DESCRIPTOR,
+        )?;
+        Ok(MatmulDescriptorBuilder { descriptor })
+    }
+
+    pub fn set_compute_type(self, compute_type: &cudnnDataType_t) -> Result<Self, CudnnError> {
+        backend_set_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_MATMUL_COMP_TYPE,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_DATA_TYPE,
+            1,
+            compute_type as *const cudnnDataType_t as *const std::ffi::c_void,
+        )?;
+        Ok(self)
+    }
+
+    pub fn finalize(self) -> Result<MatmulDescriptor, CudnnError> {
+        backend_finalize(self.descriptor)?;
+        Ok(MatmulDescriptor {
+            descriptor: self.descriptor,
+        })
+    }
+}
+
+pub struct OperationMatmulDescriptorBuilder {
+    pub descriptor: cudnnBackendDescriptor_t,
+}
+
+pub struct OperationMatmulDescriptor {
+    pub descriptor: cudnnBackendDescriptor_t,
+}
+
+impl OperationMatmulDescriptorBuilder {
+    pub fn new() -> Result<Self, CudnnError> {
+        let descriptor: cudnnBackendDescriptor_t = backend_create_descriptor(
+            cudnnBackendDescriptorType_t::CUDNN_BACKEND_OPERATION_MATMUL_DESCRIPTOR,
+        )?;
+        Ok(OperationMatmulDescriptorBuilder { descriptor })
+    }
+
+    pub fn set_a_descriptor(
+        self,
+        a_descriptor: &BackendTensorDescriptor,
+    ) -> Result<Self, CudnnError> {
+        backend_set_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_OPERATION_MATMUL_ADESC,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
+            1,
+            &(a_descriptor.descriptor) as *const cudnnBackendDescriptor_t
+                as *const std::ffi::c_void,
+        )?;
+        Ok(self)
+    }
+
+    pub fn set_b_descriptor(
+        self,
+        b_descriptor: &BackendTensorDescriptor,
+    ) -> Result<Self, CudnnError> {
+        backend_set_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_OPERATION_MATMUL_BDESC,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
+            1,
+            &(b_descriptor.descriptor) as *const cudnnBackendDescriptor_t
+                as *const std::ffi::c_void,
+        )?;
+        Ok(self)
+    }
+
+    pub fn set_c_descriptor(
+        self,
+        c_descriptor: &BackendTensorDescriptor,
+    ) -> Result<Self, CudnnError> {
+        backend_set_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_OPERATION_MATMUL_CDESC,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
+            1,
+            &(c_descriptor.descriptor) as *const cudnnBackendDescriptor_t
+                as *const std::ffi::c_void,
+        )?;
+        Ok(self)
+    }
+
+    pub fn set_irregularly_strided_batch_count(self, count: i64) -> Result<Self, CudnnError> {
+        backend_set_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_OPERATION_MATMUL_IRREGULARLY_STRIDED_BATCH_COUNT,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_INT64,
+            1,
+            &count as *const i64 as *const std::ffi::c_void,
+        )?;
+        Ok(self)
+    }
+
+    pub fn set_gemm_m_override_desc(
+        self,
+        m_override_desc: &BackendTensorDescriptor,
+    ) -> Result<Self, CudnnError> {
+        backend_set_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_OPERATION_MATMUL_GEMM_M_OVERRIDE_DESC,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
+            1,
+            &(m_override_desc.descriptor) as *const cudnnBackendDescriptor_t
+                as *const std::ffi::c_void,
+        )?;
+        Ok(self)
+    }
+
+    pub fn set_gemm_n_override_desc(
+        self,
+        n_override_desc: &BackendTensorDescriptor,
+    ) -> Result<Self, CudnnError> {
+        backend_set_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_OPERATION_MATMUL_GEMM_N_OVERRIDE_DESC,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
+            1,
+            &(n_override_desc.descriptor) as *const cudnnBackendDescriptor_t
+                as *const std::ffi::c_void,
+        )?;
+        Ok(self)
+    }
+
+    pub fn set_gemm_k_override_desc(
+        self,
+        k_override_desc: &BackendTensorDescriptor,
+    ) -> Result<Self, CudnnError> {
+        backend_set_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_OPERATION_MATMUL_GEMM_K_OVERRIDE_DESC,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
+            1,
+            &(k_override_desc.descriptor) as *const cudnnBackendDescriptor_t
+                as *const std::ffi::c_void,
+        )?;
+        Ok(self)
+    }
+
+    pub fn set_matmul_desc(self, matmul_desc: &MatmulDescriptor) -> Result<Self, CudnnError> {
+        backend_set_attribute(
+            self.descriptor,
+            cudnnBackendAttributeName_t::CUDNN_ATTR_OPERATION_MATMUL_DESC,
+            cudnnBackendAttributeType_t::CUDNN_TYPE_BACKEND_DESCRIPTOR,
+            1,
+            &(matmul_desc.descriptor) as *const cudnnBackendDescriptor_t as *const std::ffi::c_void,
+        )?;
+        Ok(self)
+    }
+
+    pub fn finalize(self) -> Result<OperationMatmulDescriptor, CudnnError> {
+        backend_finalize(self.descriptor)?;
+        Ok(OperationMatmulDescriptor {
+            descriptor: self.descriptor,
+        })
     }
 }

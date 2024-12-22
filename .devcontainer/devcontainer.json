@@ -17,9 +17,6 @@
 			]
 		}
 	},
-	"mounts": [
-		"source=/home/mist/workspace/models,target=/root/.cache/huggingface/,type=bind,consistency=cached"
-	],
 	"runArgs": [
 		"--gpus=all",
 		"--shm-size=8gb",
